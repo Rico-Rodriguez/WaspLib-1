@@ -1,32 +1,17 @@
-(*
-# Inventory Layouts
-The `Inventory Layouts` is a handler for OSRS inventory.
 
-You can configure the layouts manually but the recommended way is to use
-{ref}`Inventory Form`.
-*)
 
 {$DEFINE WL_INVENTORY_LAYOUTS_INCLUDED}
 {$INCLUDE_ONCE WaspLib/osrs.simba}
 
 type
-(*
-## TRSInventoryLayouItem
-Type that represents a single inventory layout item.
-*)
-  TRSInventoryLayouItem = record
+
+  TRSInventoryLayoutItem = record
     Item: TRSItem;
     Amount: Integer;
   end;
 
-(*
-## TRSInventoryLayouItem.ToJSON
-```pascal
-function TRSInventoryLayouItem.ToJSON(): TJSONItem;
-```
-Convert the `TRSInventoryLayoutItem` into a `TJSONItem`.
-*)
-function TRSInventoryLayouItem.ToJSON(): TJSONItem;
+
+function TRSInventoryLayoutItem.ToJSON(): TJSONItem;
 begin
   Result := new TJSONObject();
   Result.AddString('Item', Self.Item);
@@ -34,22 +19,13 @@ begin
 end;
 
 type
-(*
-## TRSInventoryLayoutSlots
-Type that represents an entire inventory layout.
-*)
+
   TRSInventoryLayoutSlots = record
     Name: String;
-    Items: array [0..27] of TRSInventoryLayouItem;
+    Items: array [0..27] of TRSInventoryLayoutItem;
   end;
 
-(*
-## TRSInventoryLayout.ToJSON
-```pascal
-function TRSInventoryLayout.ToJSON(): TJSONItem;
-```
-Convert the `TRSInventoryLayout` into a `TJSONItem`.
-*)
+
 function TRSInventoryLayoutSlots.ToJSON(): TJSONItem;
 var
   i: Integer;
@@ -60,27 +36,17 @@ begin
 end;
 
 type
-(*
-## TRSInventoryLayout
-Main type to user {ref}`Inventory Layouts`.
-*)
+
   TRSInventoryLayout = record
     Layout: TRSInventoryLayoutSlots;
-    Holding: array [0..27] of TRSInventoryLayouItem;
+    Holding: array [0..27] of TRSInventoryLayoutItem;
     BankItems: TRSBankItemArray;
   end;
 
-(*
-## InventoryLayout.SetupBankItems
-```pascal
-procedure TRSInventoryLayout.SetupBankItems();
-```
-Internal function used to setup the `TRSInventoryLayout` {ref}`TRSBankItem`s.
-This is automatically called for you when it's needed.
-*)
+
 procedure TRSInventoryLayout.SetupBankItems();
 var
-  items: array of TRSInventoryLayouItem;
+  items: array of TRSInventoryLayoutItem;
   i, hi, j, count: Integer;
   item: TRSItem;
 begin
@@ -114,19 +80,7 @@ begin
   end;
 end;
 
-(*
-## InventoryLayout.IsValid
-```pascal
-function TRSInventoryLayout.IsValid(): Boolean;
-```
-Returns true/false if whatever is inr you current {ref}`Inventory` is valid for
-your {ref}`TRSInventoryLayout`.
 
-Example:
-```pascal
-WriteLn layout.IsValid();
-```
-*)
 function TRSInventoryLayout.IsValid(): Boolean;
 var
   i: Integer;
@@ -141,20 +95,7 @@ begin
   Result := True;
 end;
 
-(*
-## InventoryLayout.DepositDiff
-```pascal
-function TRSInventoryLayout.DepositDiff(): Boolean;
-```
-Assuming the {ref}`Bank` is open, this will deposit every item in your inventory
-that doesn't match your {ref}`TRSInventoryLayout`.
 
-Example:
-```pascal
-if Bank.Open() then
-  layout.DepositDiff();
-```
-*)
 function TRSInventoryLayout.DepositDiff(): Boolean;
 var
   i, j, n, stack: Integer;
@@ -212,20 +153,7 @@ begin
 end;
 
 
-(*
-## InventoryLayout.Withdraw
-```pascal
-function TRSInventoryLayout.Withdraw(): Boolean;
-```
-Assuming the {ref}`Bank` is open, this will withdraw anything necessay so your
-{ref}`Inventory` contents match your `TRSInventoryLayout`.
 
-Example:
-```pascal
-if Bank.Open() then
-  layout.Withdraw();
-```
-*)
 function TRSInventoryLayout.Withdraw(attempts: Integer = 3): Boolean;
 var
   arr: TRSBankItemArray;
@@ -264,19 +192,7 @@ begin
   Result := Self.IsValid() or Self.Withdraw(Dec(attempts));
 end;
 
-(*
-## InventoryLayout.Reorder
-```pascal
-function TRSInventoryLayout.Reorder(): Boolean;
-```
-Attempts to reorder the items in your {ref}`Inventory` to it matches your
-`TRSInventoryLayout`.
 
-Example:
-```pascal
-layout.Reorder();
-```
-*)
 function TRSInventoryLayout.Reorder(): Boolean;
 var
   i, j: Integer;
