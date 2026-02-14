@@ -1,43 +1,13 @@
-(*
-# Gear Layouts
-The `Gear Layouts` is a handler for OSRS gear.
-"Gear" refers to as any equippable item in the game.
 
-You can configure gear manually but the recommended way is to use {ref}`Gear Form`.
-*)
 
 {$DEFINE WL_GEAR_LAYOUTS_INCLUDED}
 {$INCLUDE_ONCE WaspLib/osrs.simba}
 
 type
-(*
-## TRSGearItem
-Alias type for a {ref}`TRSItem` that is equippable.
-This doesn't have much use other than {ref}`GearItem.Interact` that comes next
-which can be very handy.
-*)
+
   TRSGearItem = type TRSItem;
 
-(*
-## GearItem.Interact
-```pascal
-function TRSGearItem.Interact(option: String = ''; attempts: Int32 = 2): Boolean;
-```
-Interact with the `TRSGearItem` regardless of it being on the {ref}`Inventory`
-or {ref}`Equipment` with the least amount of gametab switches possible.
 
-Example:
-```pascal
-ring.Interact('Rub');
-```
-
-Because {ref}`TRSGearItem` have few use cases, you are probably using
-{ref}`TRSItem` instead.
-You can still easily use this by casting:
-```pascal
-TRSGearItem(ring).Interact('Rub');
-```
-*)
 function TRSGearItem.Interact(option: String = ''; attempts: Int32 = 2): Boolean;
 var
   slot, i: Int32;
@@ -88,22 +58,13 @@ begin
 end;
 
 type
-(*
-## TRSGear
-Type that represents a gear layout.
-*)
+
   TRSGear = record
     Name: String;
     Items: array [ERSEquipment] of TRSItem;
   end;
 
-(*
-## Gear.ToJSON
-```pascal
-function TRSGear.ToJSON(): TJSONItem;
-```
-Convert the `TRSGear` into a `TJSONItem`.
-*)
+
 function TRSGear.ToJSON(): TJSONItem;
 var
   slot: ERSEquipment;
@@ -115,22 +76,13 @@ begin
 end;
 
 type
-(*
-## TRSGearLayout
-Main type for the {ref}`Gear Layouts`.
-*)
+
   TRSGearLayout = record
     Gear: TRSGear;
     Equipped: array [ERSEquipment] of TRSItem;
   end;
 
-(*
-## GearLayout.Equip
-```pascal
-function TRSGearLayout.Equip(): Boolean;
-```
-Attempts to equip a `GearLayout`.
-*)
+
 function TRSGearLayout.Equip(): Boolean;
 var
   slot: ERSEquipment;
@@ -179,13 +131,7 @@ begin
       Equipment.Slots.Click(Ord(slot), EMouseButton.LEFT);
 end;
 
-(*
-## GearLayout.Withdraw
-```pascal
-function TRSGearLayout.Withdraw(): Boolean;
-```
-Attempts to withdraw a `GearLayout` from the {ref}`Bank`.
-*)
+
 function TRSGearLayout.Withdraw(): Boolean;
 var
   slot: ERSEquipment;
@@ -197,6 +143,11 @@ begin
   begin
     if Self.Equipped[slot] = Self.Gear.Items[slot] then
       Continue;
+
+    case Self.Gear.Items[slot] of
+      'Nothing', 'Anything': Continue;
+    end;
+
     if Inventory.Items.Contains(Self.Gear.Items[slot]) then
       Continue;
 
