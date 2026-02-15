@@ -1005,7 +1005,7 @@ begin
       Exit(True);
     end;
 
-    timeout.Start(Round(RandomMode(100, 85, 250)));
+    timeout.Start(Round(RandomMode(1000, 800, 1500)));
 
     repeat
       if MainScreen._IsUpText(upText, [modeStr], True, 0.85) then
