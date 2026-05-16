@@ -85,6 +85,28 @@ begin
 end;
 
 (*
+### TListeners.Remove
+```pascal
+procedure TListeners.Remove(name: String);
+```
+Remove a {ref}`TListener` from {ref}`Listeners`.
+*)
+procedure TListeners.Remove(name: String);
+var
+  i: Integer;
+  tmp: String;
+begin
+  tmp := LowerCase(name);
+  for i := 0 to High(Self.Listeners) do
+    if LowerCase(Self.Listeners[i].Name) = tmp then
+    begin
+      Delete(Self.Listeners, i, 1);
+      Break;
+    end;
+end;
+
+
+(*
 ### TListeners.Free
 ```pascal
 procedure TListeners.Free();
@@ -116,10 +138,20 @@ var
   i: Integer;
 begin
   if Self.Interval = 0 then
-    raise GetDebugLn('Listeners', 'Interval cannot be 0.');
+  begin
+    WriteLn(#0#0'000004', GetTimeStamp(), ':[Listeners]: Interval cannot be 0.');
+    RaiseException(#0#0'000004' + GetTimeStamp() + ':[Listeners]: Interval cannot be 0.');
+  end;
+
   for i := 0 to High(Self.Listeners) do
     if @Self.Listeners[i].Setup <> nil then
-      Self.Listeners[i].Setup();
+      try
+        Self.Listeners[i].Setup();
+      except
+        WriteLn(#0#0'000004', GetTimeStamp(), ':[Listeners]: ', Self.Listeners[i].Name, ' crashed:');
+        WriteLn(#0#0'000004', GetExceptionMessage());
+        RaiseException(GetExceptionMessage());
+      end;
 
   if Self.Thread = nil then
     AddOnTerminate(@Self.Free);
@@ -158,7 +190,15 @@ begin
     for i := 0 to hi do
     begin
       t := Time();
-      Self.Listeners[i].Check();
+
+      try
+        Self.Listeners[i].Check();
+      except
+        WriteLn(#0#0'000004', GetTimeStamp(), ':[Listeners]: ', Self.Listeners[i].Name, ' crashed:');
+        WriteLn(#0#0'000004', GetExceptionMessage());
+        RaiseException(GetExceptionMessage());
+      end;
+
       t := Time()-t;
       if t > avg then
       begin
@@ -191,26 +231,50 @@ procedure TListeners.StartInThread(interval: Integer = 300);
 ```
 Starts `Listeners` in a separate thread.
 
-Below you have a full example of how you could use `Listeners` to setup
-`ChatListeners`.
-
-Example:
+Below you have an example on how to use `Listeners` to keep a {ref}`Chat`
+`History`:
 ```pascal
 {$I WaspLib/osrs.simba}
 
-procedure LogLastChatMessage(const msgs: TChatText);
+var
+  history: TChatMessageArray;
+
+procedure ProcessChat(const msgs: TChatMessageArray);
+var
+  i, n: Integer;
 begin
-  WriteLn msgs[7];
+  for i := High(history) downto 0 do
+    for n := High(msgs) downto 1 do
+      if history[i].Equals(msgs[n], 0.85) then
+        Break;
+  for n to 7 do
+    history += msgs[n];
+end;
+
+var
+  updated: Boolean;
+  messages: TChatMessageArray;
+
+procedure OnMessage(const msgs: TChatMessageArray);
+begin
+  messages := msgs.Copy();
+  updated := True;
 end;
 
 begin
-  ChatListener.OnMessage += @LogLastChatMessage;
+  AddOnTerminate(@history.Print);
+  ChatListener.OnMessage += @OnMessage;
   Listeners.Add('ChatListener', @ChatListener.Setup, @ChatListener.Check);
   Listeners.StartInThread(300);
 
   while True do
   begin
-    WriteLn('Running on the main thread');
+    WriteLn updated;
+    if updated then
+    begin
+      ProcessChat(messages);
+      updated := False;
+    end;
     Sleep(4000);
   end;
 end.
@@ -224,5 +288,9 @@ begin
 end;
 
 var
+(*
+## Listeners variable
+Global {ref}`TListeners` variable.
+*)
   Listeners: TListeners;
 

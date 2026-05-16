@@ -8,7 +8,7 @@ These can be buttons, scrollbars, dropdowns, checkboxes, etc.
 
 type
   TRSButtonEnabledColor = record
-    Color: Integer;
+    Color: TColor;
     Tolerance: Single;
   end;
 
@@ -132,8 +132,8 @@ A record meant to handle sliders in the game interfaces:
 *)
   TRSSlider = record
     Color: TColor;
-    Bounds: TBox;
     Width: Integer;
+    Bounds: TBox;
   end;
 
 (*
@@ -205,8 +205,7 @@ Record to handle the game interface's scrollbars:
 ```
 *)
   TRSScrollBar = record
-    Area, Up, Down: TBox;
-    Bounds: TBox;
+    Area, Up, Down, Bounds: TBox;
     Width, Height: Integer;
   end;
 
@@ -490,7 +489,6 @@ Record to handle drop downs in the game interfaces:
   end;
 
   TRSDropDownArray = array of TRSDropDown;
-
 
 (*
 ### TRSDropDown.Setup

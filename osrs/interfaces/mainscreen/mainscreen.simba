@@ -127,7 +127,12 @@ end;
 (*
 ### MainScreen._IsUpText
 ```pascal
-function TRSMainScreen._IsUpText(out upText: String; strings: TStringArray; caseSensitive: Boolean; similarity: Single): Boolean;
+function TRSMainScreen._IsUpText(
+  out upText: String;
+  strings: TStringArray;
+  caseSensitive: Boolean;
+  similarity: Single
+): Boolean;
 ```
 Internal helper method used in {ref}`MainScreen.IsUpText`.
 
@@ -135,7 +140,12 @@ Internal helper method used in {ref}`MainScreen.IsUpText`.
 
 You probably won't ever need to call this method directly.
 *)
-function TRSMainScreen._IsUpText(out upText: String; strings: TStringArray; caseSensitive: Boolean; similarity: Single): Boolean;
+function TRSMainScreen._IsUpText(
+  out upText: String;
+  strings: TStringArray;
+  caseSensitive: Boolean;
+  similarity: Single
+): Boolean;
 var
   str: String;
   i: Integer;
@@ -178,8 +188,19 @@ end;
 (*
 ### MainScreen.IsUpText
 ```pascal
-function TRSMainScreen.IsUpText(strings: TStringArray; caseSensitive: Boolean = True; similarity: Single = 0.85; time: Integer = -1): Boolean;
-function TRSMainScreen.IsUpText(text: String; caseSensitive: Boolean = True; similarity: Single = 0.85; time: Integer = -1): Boolean; overload;
+function TRSMainScreen.IsUpText(
+  strings: TStringArray;
+  caseSensitive: Boolean = True;
+  similarity: Single = 0.85;
+  time: Integer = -1
+): Boolean;
+
+function TRSMainScreen.IsUpText(
+  text: String;
+  caseSensitive: Boolean = True;
+  similarity: Single = 0.85;
+  time: Integer = -1
+): Boolean; overload;
 ```
 Compares `text` or `strings` with the {ref}`uptext` on the mainscreen.
 Returns True if the match above the threshold `similarity`.
@@ -196,7 +217,12 @@ if MainScreen.IsUpText('Walk here') then
   Mouse.Click(EMouseButton.LEFT);
 ```
 *)
-function TRSMainScreen.IsUpText(strings: TStringArray; caseSensitive: Boolean = True; similarity: Single = 0.85; time: Integer = -1): Boolean;
+function TRSMainScreen.IsUpText(
+  strings: TStringArray;
+  caseSensitive: Boolean = True;
+  similarity: Single = 0.85;
+  time: Integer = -1
+): Boolean;
 var
   timeout: TCountDown;
   strs: TStringArray;
@@ -227,7 +253,12 @@ begin
   until timeout.IsFinished;
 end;
 
-function TRSMainScreen.IsUpText(text: String; caseSensitive: Boolean = True; similarity: Single = 0.85; time: Integer = -1): Boolean; overload;
+function TRSMainScreen.IsUpText(
+  text: String;
+  caseSensitive: Boolean = True;
+  similarity: Single = 0.85;
+  time: Integer = -1
+): Boolean; overload;
 begin
   Result := Self.IsUpText([text], caseSensitive, similarity, time);
 end;
@@ -266,7 +297,9 @@ end;
 (*
 ### MainScreen.IsServerMessage
 ```pascal
-function TRSMainScreen.IsServerMessage(text: String; caseSensitive: Boolean = True; similarity: Single = 0.85): Boolean;
+function TRSMainScreen.IsServerMessage(
+  text: String; caseSensitive: Boolean = True; similarity: Single = 0.85
+): Boolean; overload;
 ```
 Compares `text` with the {ref}`server message` visible if any.
 Returns True if the match above the threshold `similarity`.
@@ -277,7 +310,9 @@ if MainScreen.IsServerMessage('Loading...') then
   Sleep(2000, 4000);
 ```
 *)
-function TRSMainScreen.IsServerMessage(text: String; caseSensitive: Boolean = True; similarity: Single = 0.85): Boolean; overload;
+function TRSMainScreen.IsServerMessage(
+  text: String; caseSensitive: Boolean = True; similarity: Single = 0.85
+): Boolean; overload;
 var
   msg: String;
 begin
@@ -501,7 +536,9 @@ begin
     Exit(Self.RedClicked());
 end;
 
-function TRSMainScreen.Interact(pt: TPoint; strings: TStringArray): Boolean; overload;
+function TRSMainScreen.Interact(
+  pt: TPoint; strings: TStringArray
+): Boolean; overload;
 begin
   Mouse.Move(pt);
   Result := Self.Interact(strings);
@@ -517,7 +554,9 @@ Global {ref}`TRSMainScreen` variable.
 (*
 ## Biometrics.YellowClick
 ```pascal
-function TBiometrics.YellowClick(button: EMouseButton; clicks: UInt32 = 3): Boolean;
+function TBiometrics.YellowClick(
+  button: EMouseButton; clicks: UInt32 = 3
+): Boolean;
 ```
 Basically the same as {ref}`Biometrics.Click` but returns true if we yellow clicked.
 
@@ -526,7 +565,9 @@ Example:
 Biometrics.YellowClick(EMouseButton.LEFT);
 ```
 *)
-function TBiometrics.YellowClick(button: EMouseButton; clicks: UInt32 = 3): Boolean;
+function TBiometrics.YellowClick(
+  button: EMouseButton; clicks: UInt32 = 3
+): Boolean;
 var
   i: Integer;
 begin
@@ -548,7 +589,9 @@ end;
 (*
 ## Biometrics.RedClick
 ```pascal
-function TBiometrics.RedClick(button: EMouseButton; clicks: UInt32 = 3): Boolean;
+function TBiometrics.RedClick(
+  button: EMouseButton; clicks: UInt32 = 3
+): Boolean;
 ```
 Basically the same as {ref}`Biometrics.Click` but returns true if we red clicked.
 
@@ -557,7 +600,9 @@ Example:
 Biometrics.RedClick(EMouseButton.LEFT);
 ```
 *)
-function TBiometrics.RedClick(button: EMouseButton; clicks: UInt32 = 3): Boolean;
+function TBiometrics.RedClick(
+  button: EMouseButton; clicks: UInt32 = 3
+): Boolean;
 var
   i: Integer;
 begin

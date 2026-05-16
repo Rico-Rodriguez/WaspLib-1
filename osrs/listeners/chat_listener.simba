@@ -18,13 +18,66 @@ For more information on listeners and how to run them check {ref}`Listeners`.
 {.$DEFINE WL_DEBUG_CHAT_LISTENER}
 
 type
-  TChatText = array [0..7] of String;
-  TOnChatMessage = procedure (const msgs: TChatText) of object;
+(*
+(TChatMessage)=
+## TChatMessage type
+Type representing a chat message.
+*)
+  TChatMessage = record
+    Ironman: ERSIronMan;
+    Username, Text: String;
+  end;
+
+  TChatMessageArray = array of TChatMessage;
+
+function TChatMessage.Equals(
+  const other: TChatMessage; similarity: Double
+): Boolean;
+begin
+  Result := (Self.Ironman = other.Ironman) and
+            (Self.Username.Similarity(other.Username) > similarity) and
+            (Self.Text.Similarity(other.Text) > similarity);
+end;
+
+function TChatMessageArray.Equals(
+  other: TChatMessageArray; similarity: Double
+): Boolean; overload;
+var
+  i: Integer;
+begin
+  for i := High(Self) downto 0 do
+    if not Self[i].Equals(other[i], similarity) then
+      Exit;
+  Result := True;
+end;
+
+procedure TChatMessageArray.Print();
+var
+  i: Integer;
+begin
+  WriteLn('Priting ', Length(Self), ' messages:');
+  for i := 0 to High(Self) do
+  begin
+    if Self[i].Username = '' then
+    begin
+      WriteLn(Self[i].Text);
+      Continue;
+    end;
+
+    WriteLn(
+      ToStr(Self[i].Ironman).After('ERSIronMan.') + ' > ' +
+      Self[i].Username + ': ', Self[i].Text
+    );
+  end;
+end;
+
+type
+  TOnChatMessage = procedure (const msgs: TChatMessageArray) of object;
 
   TChatListener = record
     Engine: TPixelOCR;
-    MessageLines: array [0..7] of TBox;
-    LastMessages: TChatText;
+    MessageLines: TBoxArray;
+    LastMessages: TChatMessageArray;
     Bounds, NameBox: TBox;
     OnMessage: array of TOnChatMessage;
     const STATIC_OFFSET: Integer = 2;
@@ -39,19 +92,64 @@ begin
 
   pt := [-Self.Bounds.X1, -Self.Bounds.Y1 - Self.STATIC_OFFSET];
 
-  for i := 0 to 7 do
+  SetLength(Self.LastMessages, Length(Chat.MessageLines));
+  SetLength(Self.MessageLines, Length(Chat.MessageLines));
+
+  for i := 0 to High(Chat.MessageLines) do
     Self.MessageLines[i] := Chat.MessageLines[i].Offset(pt);
+
 
   Self.NameBox := Chat.InputLine.Offset(pt);
   Self.NameBox.X2 := Self.NameBox.X1 + Self.NameBox.Width div 4;
 
-  WriteLn GetDebugLn('ChatListener', 'Setup and ready to start listening to new chat messages.');
+  WriteLn(
+    GetTimeStamp(),
+    ':[ChatListener]: Setup and ready to start listening to new chat messages.'
+  );
 end;
+
+(*
+## ChatListener.GetIronManType
+```pascal
+function TChatListener.GetIronManType(trgt: TTarget) : ERSIronMan;
+```
+Very similar to {ref}`Chat.GetIronManType`.
+
+Returns the account ironman type.
+
+Example:
+```pascal
+WriteLn ChatListener.GetIronManType(Target);
+```
+*)
+function TChatListener.GetIronManType(trgt: TTarget; b: TBox): ERSIronMan;
+begin
+  b.X2 := b.X1 + 10;
+
+  if trgt.HasColor([$484949, 1.216, EColorSpace.HSL, [0.018, 2.599, 0.385]], 1, b) then
+  begin
+    if trgt.HasColor([$7E3C1A, 0.761, EColorSpace.HSL, [1.396, 1.396, 0.210]], 1, b) then
+      Exit(ERSIronMan.GROUP);
+    if trgt.HasColor([$1A1A83, 0.817, EColorSpace.HSL, [1.977, 0.683, 0.342]], 1, b) then
+      Exit(ERSIronMan.HARCORE_GROUP);
+    if trgt.HasColor([$5D801A, 1.2, EColorSpace.HSL, [1.345, 1.345, 0.312]], 1, b) then
+      Exit(ERSIronMan.UNRANKED_GROUP);
+
+    Exit(ERSIronMan.IRONMAN);
+  end;
+
+  if trgt.HasColor([$1B1B57, 0.787, EColorSpace.HSL, [2.371, 0.206, 0.425]], 1, b) then
+    Exit(ERSIronMan.HARDCORE);
+
+  if trgt.HasColor([$BFC1C1, 2.268, EColorSpace.HSL, [0.034, 2.779, 0.189]], 1, b) then
+    Exit(ERSIronMan.ULTIMATE);
+end;
+
 
 (*
 ## ChatListener.GetMessage
 ```pascal
-function TChatListener.GetMessage(trgt: TTarget; line: Integer): String;
+function TChatListener.GetMessage(trgt: TTarget; line: Integer): TChatMessage;
 ```
 Very similar to `Chat.GetMessage` when the chat is not transparent in how it
 works.
@@ -63,13 +161,21 @@ Example:
 WriteLn ChatListener.GetMessage(Target, 5);
 ```
 *)
-function TChatListener.GetMessage(trgt: TTarget; line: Integer): String;
+function TChatListener.GetMessage(trgt: TTarget; line: Integer): TChatMessage;
 var
   img: TImage;
   tpa: TPointArray;
   b: TBox;
+  iron: ERSIronMan;
+  txt: String;
+  i: Integer;
 begin
   b := Self.MessageLines[line];
+
+  iron := Self.GetIronManType(trgt, b);
+  if iron <> ERSIronMan.NONE then
+    b.X1 += 10;
+
   img := trgt.GetImage(b);
 
   tpa := trgt.FindColor(
@@ -83,13 +189,21 @@ begin
   img.DrawColor := $FFFFFF;
   img.DrawTPA(tpa.Invert());
 
-  Result := Self.Engine.Recognize(img, RSFonts.PLAIN_12);
+  txt := Self.Engine.Recognize(img, RSFonts.PLAIN_12).Trim();
+
+  i := txt.IndexOf(':');
+  if i = -1 then
+    Exit([ERSIronMan.NONE, '', txt]);
+
+  Result.Ironman := iron;
+  Result.Username := txt.CopyRange(0, i-2).TrimRight();
+  Result.Text := txt.CopyRange(i+1, Length(txt)).TrimLeft();
 end;
 
 (*
 ## ChatListener.GetTransparentMessage
 ```pascal
-function TChatListener.GetTransparentMessage(trgt: TTarget; line: Integer): String;
+function TChatListener.GetTransparentMessage(trgt: TTarget; line: Integer): TChatMessage;
 ```
 Very similar to `Chat.GetMessage` for transparent messages in how it works.
 
@@ -100,12 +214,21 @@ Example:
 WriteLn ChatListener.GetTransparentMessage(Target, 5);
 ```
 *)
-function TChatListener.GetTransparentMessage(trgt: TTarget; line: Integer): String;
+function TChatListener.GetTransparentMessage(trgt: TTarget; line: Integer): TChatMessage;
 var
   img: TImage;
   tpa: TPointArray;
+  b: TBox;
+  iron: ERSIronMan;
+  txt: String;
+  i: Integer;
 begin
-  img := trgt.GetImage(Self.MessageLines[line]);
+  b := Self.MessageLines[line];
+  iron := Self.GetIronManType(trgt, b);
+  if iron <> ERSIronMan.NONE then
+    b.X1 += 10;
+
+  img := trgt.GetImage(b);
   tpa := img.FindColor($0, 0, [0, Self.STATIC_OFFSET, img.Width, Self.STATIC_OFFSET]);
   img.DrawColor := $FFFFFF;
   img.DrawTPA(tpa);
@@ -114,7 +237,15 @@ begin
   tpa := tpa.Offset([-1,-1]).ExcludePoints(tpa);
   img.ReplaceColorBinary(False, img.GetColors(tpa).Unique(), 0);
 
-  Result := Self.Engine.Recognize(img, RSFonts.PLAIN_12, [0,0]);
+  txt := Self.Engine.Recognize(img, RSFonts.PLAIN_12, [0,0]);
+
+  i := txt.IndexOf(':');
+  if i = -1 then
+    Exit([ERSIronMan.NONE, '', txt]);
+
+  Result.Ironman := iron;
+  Result.Username := txt.CopyRange(0, i-2);
+  Result.Text := txt.CopyRange(i+1, Length(txt));
 end;
 
 
@@ -135,12 +266,14 @@ var
   img: TImage;
   trgt: TTarget;
   i: Integer;
-  msgs: TChatText;
+  msgs: TChatMessageArray;
 begin
   img := Target.GetImage(Self.Bounds);
 
   trgt := new TTarget();
   trgt.SetImage(img);
+
+  SetLength(msgs, Length(Self.LastMessages));
 
   if trgt.HasColor($FFFFFF, 0, 1, Self.NameBox) then
   begin
@@ -153,7 +286,7 @@ begin
       msgs[i] := Self.GetMessage(trgt, i);
   end;
 
-  Result := not msgs.Equals(Self.LastMessages);
+  Result := not msgs.Equals(Self.LastMessages, 0.85);
 
   if Result then
   begin

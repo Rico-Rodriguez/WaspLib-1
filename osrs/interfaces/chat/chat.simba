@@ -13,11 +13,10 @@ like the {ref}`Make` menu.
 
 type
 (*
-## ERSChatColor
+(ERSChatColor)=
+## ERSChatColor enum
 ```pascal
-ERSChatColor = enum(
-  BLACK, MAROON, BLUE, PURPLE, RED, LIGHT_RED, WHITE, LIGHT_PURPLE, NAVY, GREEN
-);
+ERSChatColor = enum(BLACK, MAROON .. NAVY, GREEN);
 ```
 Enum representing each of the available chat text colors.
 *)
@@ -28,7 +27,8 @@ Enum representing each of the available chat text colors.
   ERSChatColorArray = array of ERSChatColor;
 
 (*
-## ERSIronMan
+(ERSIronMan)=
+## ERSIronMan enum
 ```pascal
 ERSIronMan = enum(NONE, IRONMAN, HARDCORE, ULTIMATE, GROUP, HARCORE_GROUP, UNRANKED_GROUP);
 ```
@@ -44,7 +44,6 @@ Main record used to interact with the {ref}`Chat` interface.
     Bounds: TBox;
     Scroll: TRSScrollBar;
     Tabs: TRSChatTabs;
-
     MessageLines: TBoxArray;
     InputLine: TBox;
     ReportButton: TRSButton;
@@ -52,7 +51,7 @@ Main record used to interact with the {ref}`Chat` interface.
   end;
 
 (*
-## Chat.SetupInterface
+### Chat.SetupInterface
 ```pascal
 procedure TRSChat.SetupInterface();
 ```
@@ -92,7 +91,7 @@ begin
 end;
 
 (*
-## Chat.Tabs variable
+### Chat.Tabs variable
 ```pascal
 Tabs: TRSChatTabs;
 ```
@@ -107,12 +106,13 @@ ShowOnTarget(Chat.Tabs.Bounds);
 *)
 
 (*
-## Chat.GetColors
+#### Chat.GetColors
 ```pascal
 function TRSChat.GetColors(colors: ERSChatColorArray): TColorArray;
 ```
-Convenience method used to conver the human readable `colors` in a `ERSChatColorArray` format
-into a `TColorArray` which has the colors in BGR format.
+Convenience method used to conver the human readable `colors` in a
+`ERSChatColorArray` format into a `TColorArray` which has the colors in BGR
+format.
 
 Example:
 ```pascal
@@ -123,12 +123,14 @@ function TRSChat.GetColors(colors: ERSChatColorArray): TColorArray;
 var
   c: ERSChatColor;
 begin
+  {$R-}
   for c in colors do Result += Self.Colors[c];
+  {$R+}
 end;
 
 
 (*
-## Chat.GetDisplayNameBox
+### Chat.GetDisplayNameBox
 ```pascal
 function TRSChat.GetDisplayNameBox(out color: Integer): TBox;
 function TRSChat.GetDisplayNameBox(): TBox; overload;
@@ -151,7 +153,7 @@ begin
   b.X2 := b.X1 + Self.InputLine.Width div 4;
   b.Y2 := Self.InputLine.Y2;
 
-  for color in [$FFFFFF, $000000] do
+  for color in [RSFonts.WHITE, RSFonts.BLACK] do
   begin
     tpa := Target.FindColor(color, 0, b);
     if tpa <> [] then Exit(tpa.Bounds());
@@ -166,7 +168,7 @@ begin
 end;
 
 (*
-## Chat.GetDisplayName
+### Chat.GetDisplayName
 ```pascal
 function TRSChat.GetDisplayName(): String;
 ```
@@ -194,7 +196,7 @@ end;
 
 
 (*
-## Chat.GetIronManType
+### Chat.GetIronManType
 ```pascal
 function TRSChat.GetIronManType() : ERSIronMan;
 ```
@@ -235,7 +237,7 @@ end;
 
 
 (*
-## Chat.IsTransparent
+### Chat.IsTransparent
 ```pascal
 function TRSChat.IsTransparent(): Boolean;
 ```
@@ -260,7 +262,7 @@ end;
 
 
 (*
-## Chat.IsOpen
+### Chat.IsOpen
 ```pascal
 function TRSChat.IsOpen(): Boolean;
 ```
@@ -279,7 +281,7 @@ begin
 end;
 
 (*
-## Chat.Close
+### Chat.Close
 ```pascal
 function TRSChat.Close(): Boolean;
 ```
@@ -301,7 +303,7 @@ end;
 
 
 (*
-## Chat Queries
+### Chat Queries
 A chat query is when you have some kind of question on the chatbox which you have
 to reply to.
 
@@ -312,7 +314,7 @@ A chat query.
 *)
 
 (*
-### Chat.GetQuery
+#### Chat.GetQuery
 ```pascal
 function TRSChat.GetQuery(): String;
 ```
@@ -329,7 +331,7 @@ begin
 end;
 
 (*
-### Chat.GetQueryAnswer
+#### Chat.GetQueryAnswer
 ```pascal
 function TRSChat.GetQueryAnswer(): String;
 ```
@@ -347,9 +349,11 @@ begin
 end;
 
 (*
-### Chat.FindQuery
+#### Chat.FindQuery
 ```pascal
-function TRSChat.FindQuery(query: String; caseSensitive: Boolean = False): Boolean;
+function TRSChat.FindQuery(
+  query: String; caseSensitive: Boolean = False
+): Boolean;
 ```
 Returns the True/False if the {ref}`Chat` interface currently has the specified
 `query` visible.
@@ -359,15 +363,22 @@ Example:
 WriteLn Chat.FindQuery('Enter amount');
 ```
 *)
-function TRSChat.FindQuery(query: String; caseSensitive: Boolean = False): Boolean;
+function TRSChat.FindQuery(
+  query: String; caseSensitive: Boolean = False
+): Boolean;
 begin
   Result := Self.GetQuery().Contains(query, caseSensitive);
 end;
 
 (*
-### Chat.WaitQuery
+#### Chat.WaitQuery
 ```pascal
-function TRSChat.WaitQuery(query: String; caseSensitive: Boolean = False; time: Integer = 600; interval: Integer = -1): Boolean;
+function TRSChat.WaitQuery(
+  query: String;
+  caseSensitive: Boolean = False;
+  time: Integer = 600;
+  interval: Integer = -1
+): Boolean;
 ```
 Returns the true if the specified `query` is visible in the {ref}`Chat`
 interface within `time` milliseconds.
@@ -377,16 +388,23 @@ Example:
 WriteLn Chat.WaitQuery('Enter amount');
 ```
 *)
-function TRSChat.WaitQuery(query: String; caseSensitive: Boolean = False; time: Integer = 600; interval: Integer = -1): Boolean;
+function TRSChat.WaitQuery(
+  query: String;
+  caseSensitive: Boolean = False;
+  time: Integer = 600;
+  interval: Integer = -1
+): Boolean;
 begin
   if interval < 0 then interval := RandomMode(100, 50, 1500);
   Result := SleepUntil(Self.FindQuery(query, caseSensitive), interval, time);
 end;
 
 (*
-### Chat.AnswerQuery
+#### Chat.AnswerQuery
 ```pascal
-function TRSChat.AnswerQuery(query, answer: String; waitTime: Integer = 600; interval: Integer = -1): Boolean;
+function TRSChat.AnswerQuery(
+  query, answer: String; waitTime: Integer = 600; interval: Integer = -1
+): Boolean;
 ```
 Attempts to reply to the specified `query` with `answer` if it's available in the
 {ref}`Chat` interface within `waitTime` milliseconds.
@@ -396,7 +414,9 @@ Example:
 WriteLn Chat.AnswerQuery('Enter amount', '15');
 ```
 *)
-function TRSChat.AnswerQuery(query, answer: String; waitTime: Integer = 600; interval: Integer = -1): Boolean;
+function TRSChat.AnswerQuery(
+  query, answer: String; waitTime: Integer = 600; interval: Integer = -1
+): Boolean;
 begin
   Result := Self.WaitQuery(query, False, waitTime, interval);
   if not Result then Exit;
@@ -409,6 +429,7 @@ begin
 end;
 
 
+{$R-}
 function TRSChat._GetMessage(line: Integer): String;
 const
   STATIC_OFFSET: Integer = 2;
@@ -421,7 +442,9 @@ begin
     b := [X1, Y1-STATIC_OFFSET, X2, Y2];
 
   //Find chatbox_bg_colors.txt has the colors used
-  tpa := Target.FindColor([$6593AC, 3.329, EColorSpace.HSL, [2.063, 0.536, 0.402]], b).Invert();
+  tpa := Target.FindColor(
+    [$6593AC, 3.329, EColorSpace.HSL, [2.063, 0.536, 0.402]], b
+  ).Invert();
   colors := Target.GetColors(tpa).Unique();
   Exit(OCR.Recognize(b, RSFonts.PLAIN_12, colors, 0));
 end;
@@ -454,7 +477,7 @@ end;
 
 
 (*
-## Chat.GetMessage
+### Chat.GetMessage
 ```pascal
 function TRSChat.GetMessage(line: Integer): String;
 ```
@@ -476,31 +499,46 @@ begin
 end;
 
 (*
-## Chat.FindMessageLine
+### Chat.IndexOfMessage
 ```pascal
-function TRSChat.FindMessageLine(msg: String; caseSensitive: Boolean = False): Integer;
+function TRSChat.IndexOfMessage(
+  msg: String; caseSensitive: Boolean = False
+): Integer;
 ```
 Find which line has a specific `msg` either entirely or partially if any.
 
 Example:
 ```pascal
-WriteLn Chat.FindMessageLine('Hello world');
+WriteLn Chat.IndexOfMessage('Hello world');
 ```
 *)
-function TRSChat.IndexOfMessage(msg: String; caseSensitive: Boolean = False): Integer;
+function TRSChat.IndexOfMessage(
+  msg: String; caseSensitive: Boolean = False
+): Integer;
 var
   i: Integer;
 begin
-  for i := 0 to High(Self.MessageLines) do
-    if Self.GetMessage(i).Contains(msg, caseSensitive) then
-      Exit(i);
+  if Self.IsTransparent() then
+  begin
+    for i := 0 to High(Self.MessageLines) do
+      if Self._GetTransparentMessage(i).Contains(msg, caseSensitive) then
+        Exit(i);
+  end
+  else
+  begin
+    for i := 0 to High(Self.MessageLines) do
+      if Self._GetMessage(i).Contains(msg, caseSensitive) then
+        Exit(i);
+  end;
   Result := -1;
 end;
 
 (*
-## Chat.ContainsMessage
+### Chat.ContainsMessage
 ```pascal
-function TRSChat.ContainsMessage(msg: String; caseSensitive: Boolean = False): Boolean;
+function TRSChat.ContainsMessage(
+  msg: String; caseSensitive: Boolean = False
+): Boolean;
 ```
 Returns True/False if the specified `msg` is visible on the {ref}`Chat` interface.
 
@@ -509,15 +547,19 @@ Example:
 WriteLn Chat.ContainsMessage('Hello world');
 ```
 *)
-function TRSChat.ContainsMessage(msg: String; caseSensitive: Boolean = False): Boolean;
+function TRSChat.ContainsMessage(
+  msg: String; caseSensitive: Boolean = False
+): Boolean;
 begin
   Result := Self.IndexOfMessage(msg, caseSensitive) > -1;
 end;
 
 (*
-## Chat.CountNewMessage
+### Chat.CountNewMessage
 ```pascal
-function TRSChat.CountNewMessage(msg: String; caseSensitive: Boolean = False): Integer;
+function TRSChat.CountNewMessage(
+  msg: String; caseSensitive: Boolean = False
+): Integer;
 ```
 Counts how many time the specified `msg` repeats without any other message in
 between from the most recent one.
@@ -538,7 +580,9 @@ begin
 end.
 ```
 *)
-function TRSChat.CountNewMessage(msg: String; caseSensitive: Boolean = False): Integer;
+function TRSChat.CountNewMessage(
+  msg: String; caseSensitive: Boolean = False
+): Integer;
 var
   i: Integer;
 begin
@@ -550,9 +594,8 @@ begin
   end;
 end;
 
-
 (*
-## Chat.GetMessagesString
+### Chat.GetMessagesString
 ```pascal
 function TRSChat.GetMessagesString(): String;
 ```
@@ -595,9 +638,10 @@ begin
     end;
   end;
 end;
+{$R+}
 
 (*
-## Chat.InputHasText
+### Chat.InputHasText
 ```pascal
 function TRSChat.InputHasText(): Boolean;
 ```
