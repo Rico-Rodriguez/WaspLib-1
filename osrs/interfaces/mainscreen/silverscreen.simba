@@ -17,7 +17,7 @@ type
 (*
 ## ERSSilverItem enum
 ```pascal
-ERSSilverItem = enum(OPAL_RING..TOPAZ_BRACELET);
+ERSSilverItem = enum(OPAL_RING, OPAL_NECKLACE.., TIARA, DEMONIC_SIGIL);
 ```
 Enum representing the silver jewelry that can be crafted.
 *)
@@ -34,14 +34,12 @@ Enum representing the silver jewelry that can be crafted.
 Main record to interact with the {ref}`SilverScreen` interface.
 *)
   TRSSilverScreen = record
-    Title     : TRSInterfaceTitle;
-    Slots     : TRSSlotInterface;
-    Items     : TRSItemInterface;
-
-    ClickBoxes: TBoxArray;
-    Bounds    : TBox;
-    SlotBoxes : TBoxArray;
-    Buttons   : array[ERSItemQuantity] of TRSButton;
+    Title: TRSInterfaceTitle;
+    Bounds: TBox;
+    SlotBoxes: TBoxArray;
+    Buttons: array [ERSItemQuantity] of TRSButton;
+    const ITEMS: set of ERSSilverItem =
+      [ERSSilverItem.OPAL_RING..ERSSilverItem.DEMONIC_SIGIL];
   end;
 
 function TRSSilverScreen.IsOpen(): Boolean; forward;
@@ -56,8 +54,8 @@ This is automatically called for you on the {ref}`SilverScreen variable`.
 *)
 procedure TRSSilverScreen.SetupInterface();
 var
-  btnGrid, leftSlots, rightSlots,
-  leftClickBoxes, rightClickBoxes: TBoxArray;
+  boxes: TBoxArray;
+  weights: TIntegerArray;
   i: Integer;
 begin
   case RSClient.Mode of
@@ -69,45 +67,21 @@ begin
 
   Self.Title.Setup(Self.Bounds);
 
-  leftClickBoxes  := TBoxArray.Create(
-                 [Self.Bounds.X1 + 10,  Self.Bounds.Y1 + 40],  // anchor
-                 3, 4,                                         // cols, rows
-                 79, 55,                                       // w, h
-                 [5,1]);                                       // gaps
+  boxes :=
+    TBoxArray.Create(Self.Bounds.TopLeft.Offset(10, 40), 3, 4, 79, 55, [5,1]) +
+    TBoxArray.Create(Self.Bounds.TopRight.Offset(-233, 40), 2, 4, 109, 55, [5,1]);
 
-  rightClickBoxes := TBoxArray.Create(
-                 [Self.Bounds.X2 - 233, Self.Bounds.Y1 + 40],  // anchor
-                 2, 4,                                         // cols, rows
-                 109, 55,                                      // w, h
-                 [5,1]);                                       // gaps
+  SetLength(weights, Length(boxes));
+  for i := 0 to High(boxes) do
+    weights[i] := boxes[i].X1 * 100 + boxes[i].Y1;
 
-  leftSlots  := TBoxArray.Create(
-                 [Self.Bounds.X1 + 32,  Self.Bounds.Y1 + 56],  // anchor
-                 3, 4,                                         // cols, rows
-                 36, 32,                                       // w, h
-                 [48,24]);                                     // gaps
+  Self.SlotBoxes := boxes.Sorted(weights, True);
 
-  rightSlots := TBoxArray.Create(
-                 [Self.Bounds.X2 - 195, Self.Bounds.Y1 + 56],  // anchor
-                 2, 4,                                         // cols, rows
-                 36, 32,                                       // w, h
-                 [78,24]);                                     // gaps
-
-  Self.ClickBoxes := leftClickBoxes + rightClickBoxes;
-  Self.SlotBoxes := leftSlots + rightSlots;
-
-  Self.Slots.Setup('SilverScreen.Slots', Self.SlotBoxes);
-  Self.Items.Setup('SilverScreen.Items', @Self.Slots, [0,10], @Self.IsOpen);
-
-
-  btnGrid := TBoxArray.Create(
-                    [Self.Bounds.X1 + 134,            // right‑align row
-                     Self.Bounds.Y2 - 45],            // vertical position
-                    5, 1,                             // 1 column × 5 rows
-                    36, 36,                           // width × height
-                    [14,0]);                          // 4 px vertical gap
+  boxes := TBoxArray.Create(
+    Self.Bounds.BottomLeft.Offset(134, -45), 5, 1, 36, 36, [14,0]
+  );
   for i := 0 to 4 do
-    Self.Buttons[i] := new TRSButton(btnGrid[i], [[$25323B, 1.30]]);
+    Self.Buttons[i] := new TRSButton(boxes[i], [[$25323B, 1.30]]);
 end;
 
 (*
@@ -240,72 +214,62 @@ end;
 (*
 ## SilverScreen.CanCraft
 ```pascal
-function TRSSilverScreen.CanCraft(item: TRSItem; out bounds: TBox): Boolean;
+function TRSSilverScreen.CanCraft(silver: ERSSilverItem): Boolean;
 ```
-Checks if the specified `item` can be crafted. Returns true if `item` is found
-and is craftable, and outputs the click box `bounds` for the item.
+Checks if the specified `silver` can be crafted.
 
 Example:
 ```pascal
-var bounds: TBox;
-begin
-  if SilverScreen.CanCraft('Opal ring', bounds) then
-    WriteLn 'Can craft opal ring';
-end;
+WriteLn SilverScreen.CanCraft(ERSSilverItem.OPAL_RING);
 ```
 *)
-function TRSSilverScreen.CanCraft(item: TRSItem; out bounds: TBox): Boolean;
-var
-  slot: Integer;
+function TRSSilverScreen.CanCraft(silver: ERSSilverItem): Boolean;
 begin
   if not Self.IsOpen() then
     Exit;
-  if not Self.Items.Find([item], slot) then
-    Exit;
-
-  bounds := Self.ClickBoxes[slot];
-  Result := Target.HasColor(RSFonts.ORANGE, 1, 1, bounds) or
-            Target.HasColor(RSFonts.WHITE, 1, 1, bounds);
+  Result := Target.HasColor(RSFonts.ORANGE, 1, 1, Self.SlotBoxes[silver]) or
+            Target.HasColor(RSFonts.WHITE, 1, 1, Self.SlotBoxes[silver]);
 end;
 
 
 (*
 ## SilverScreen.IsHighlighted
 ```pascal
-function TRSSilverScreen.IsHighlighted(item: TRSItem): Boolean;
+function TRSSilverScreen.IsHighlighted(silver: ERSSilverItem): Boolean;
 ```
-Returns true if the specified item is currently highlighted/selected in the interface.
-You probably won't need to work with this directly
+Returns true if the specified `silver` is currently highlighted/selected in the
+interface.
+You probably won't need to work with this directly.
 
 Example:
 ```pascal
-if SilverScreen.IsHighlighted('Opal ring') then
+if SilverScreen.IsHighlighted(ERSSilverItem.OPAL_RING) then
   Keyboard.KeyPress(EKeyCode.SPACE);
 ```
 *)
-function TRSSilverScreen.IsHighlighted(item : TRSItem) : Boolean;
-var
-  b: TBox;
+function TRSSilverScreen.IsHighlighted(silver: ERSSilverItem): Boolean;
 begin
-  if not Self.IsOpen() or not Self.CanCraft(item, b) then
+  if not Self.IsOpen() or not Self.CanCraft(silver) then
     Exit;
-  Result := Target.HasColor($49596A, 2, 1, b);
+  Result := Target.HasColor($49596A, 2, 1, Self.SlotBoxes[silver]);
 end;
 
 (*
 ## SilverScreen.CraftItem
 ```pascal
 function TRSSilverScreen.CraftItem(
-  item : TRSItem; quantity: Integer; useSpaceBar: Boolean
+  silver: ERSSilverItem; amount: Integer; useSpace: Boolean
 ): Boolean;
 
 function TRSSilverScreen.CraftItem(
-  item: TRSItem; quantity: Integer = QUANTITY_ALL;
-  spaceBarProbability: Single = -1
+  item: TRsilver;
+  amount: Integer = QUANTITY_ALL;
+  spaceProbability: Single = -1
 ): Boolean; overload;
 ```
-Crafts the specified item with the given quantity. If `UseSpaceBar` is true and the
-item is already highlighted, spacebar will be pressed instead of clicking.
+Crafts the specified item with the given `amount`.
+If `useSpace` is true and the item is already highlighted, spacebar will be
+pressed instead of clicking.
 
 Example:
 ```pascal
@@ -313,33 +277,29 @@ SilverScreen.CraftItem('Opal ring', 10, True);
 ```
 *)
 function TRSSilverScreen.CraftItem(
-  item : TRSItem; quantity: Integer; useSpaceBar: Boolean
+  silver: ERSSilverItem; amount: Integer; useSpace: Boolean
 ): Boolean;
-var
-  box : TBox;
 begin
-  if not Self.CanCraft(item, box) then
+  if not Self.CanCraft(silver) or not Self.SetQuantity(amount) then
     Exit;
 
-  Result := Self.SetQuantity(quantity);
-
-  if not Result then
-    Exit;
-
-  if useSpaceBar and Self.IsHighlighted(item) then
+  if useSpace and Self.IsHighlighted(silver) then
     Keyboard.KeyPress(EKeyCode.SPACE)
   else
-    Mouse.Click(box, EMouseButton.LEFT);
+    Mouse.Click(Self.SlotBoxes[silver], EMouseButton.LEFT);
+
+  Result := SleepUntil(not Self.IsOpen(), 200, 6 * TICK);
 end;
 
 function TRSSilverScreen.CraftItem(
-  item: TRSItem; quantity: Integer = QUANTITY_ALL;
-  spaceBarProbability: Single = -1
+  silver: ERSSilverItem;
+  amount: Integer = QUANTITY_ALL;
+  spaceProbability: Single = -1
 ): Boolean; overload;
 begin
-  if spaceBarProbability = -1 then
-    spaceBarProbability := Biometrics.RandomDouble(0.5);
-  Result := Self.CraftItem(item, quantity, RandomBoolean(spaceBarProbability));
+  if spaceProbability = -1 then
+    spaceProbability := Biometrics.RandomDouble(0.5);
+  Result := Self.CraftItem(silver, amount, RandomBoolean(spaceProbability));
 end;
 
 var

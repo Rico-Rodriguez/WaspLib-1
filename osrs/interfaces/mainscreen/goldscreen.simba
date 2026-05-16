@@ -15,7 +15,8 @@ Credits to Flight and Skunkworks
 
 type
 (*
-## ERSGoldItem
+(ERSGoldItem)=
+## ERSGoldItem enum
 ```pascal
 ERSGoldItem = enum(GOLD_RING..ZENYTE_BRACELET);
 ```
@@ -36,50 +37,18 @@ Enum of all jewellery items that can be crafted on the {ref}`GoldScreen`.
       DIAMOND_BRACELET, DRAGONSTONE_BRACELET, ONYX_BRACELET, ZENYTE_BRACELET
   );
 
-
-function ERSGoldItem.HasItem(item: TRSItem): Boolean; static;
-var
-  g: ERSGoldItem;
-  enumNormalString: String;
-  normalString: String;
-begin
-  for g := Low(ERSGoldItem) to High(ERSGoldItem) do
-  begin
-    enumNormalString := ToString(g).Replace('_', ' ').Replace('ERSGoldItem.', '').ToLower();
-    normalString := ToString(item).Replace('(u)', '').Trim().ToLower();
-    if SameText(enumNormalString, normalString) then
-      Exit(True);
-  end;
-
-  Result := False;
-end;
-
-function ERSGoldItem.FromItem(item: TRSItem): ERSGoldItem; static;
-var
-  e: ERSGoldItem;  
-  enumNormalString: String;
-  normalString: String;
-begin
-  for e := Low(ERSGoldItem) to High(ERSGoldItem) do
-  begin
-    enumNormalString := ToString(e).Replace('_', ' ').Replace('ERSGoldItem.', '').ToLower();
-    normalString := ToString(item).Replace('(u)', '').Trim().ToLower();
-    if SameText(enumNormalString, normalString) then
-      Exit(e);
-  end;
-end;
-
 (*
-## TRSGoldScreen
+(TRSGoldScreen)=
+## TRSGoldScreen type
 Main record to interact with the {ref}`GoldScreen` interface.
 *)
-type
   TRSGoldScreen = record
-    Title     : TRSInterfaceTitle;
-    Bounds    : TBox;
-    ItemBoxes : TBoxArray;
-    Buttons   : array [ERSItemQuantity] of TRSButton;
-    const ITEMS: set of ERSGoldItem = [ERSGoldItem.GOLD_RING .. ERSGoldItem.ZENYTE_BRACELET];
+    Title: TRSInterfaceTitle;
+    Bounds: TBox;
+    SlotBoxes: TBoxArray;
+    Buttons: array [ERSItemQuantity] of TRSButton;
+    const ITEMS: set of ERSGoldItem =
+      [ERSGoldItem.GOLD_RING .. ERSGoldItem.ZENYTE_BRACELET];
   end;
 
 (*
@@ -110,8 +79,8 @@ begin
   topRow     := TBoxArray.Create([Self.Bounds.X1 + 36, Self.Bounds.Y1 + 66], 9, 1, 31, 31, [14,30]);
   gridBelow  := TBoxArray.Create([Self.Bounds.X1 + 36, Self.Bounds.Y1 + 127], 8, 3, 31, 31, [19,30]);
 
-  Self.ItemBoxes += topRow;
-  self.ItemBoxes += gridBelow;
+  Self.SlotBoxes += topRow;
+  self.SlotBoxes += gridBelow;
 
   Self.Title.Setup(Self.Bounds);
 
@@ -220,11 +189,11 @@ function TRSGoldScreen.CanCraft(Item: ERSGoldItem): Boolean;
 ```
 Returns `True` if the given item icon is available for crafting.
 *)
-function TRSGoldScreen.CanCraft(gitem: ERSGoldItem): Boolean;
+function TRSGoldScreen.CanCraft(gold: ERSGoldItem): Boolean;
 begin
   if not Self.IsOpen() then
     Exit;
-  Result := Target.HasColor($2AD3EB, 20, 1, Self.ItemBoxes[gitem]);
+  Result := Target.HasColor($2AD3EB, 20, 1, Self.SlotBoxes[gold]);
 end;
 
 (*
@@ -244,49 +213,50 @@ begin
   if not Self.CanCraft(i) then
     Exit;
 
-  Result := Target.FindColor(highlight, Self.ItemBoxes[i]).Length > 0;
+  Result := Target.FindColor(highlight, Self.SlotBoxes[i]).Length > 0;
 end;
 
 (*
 ## GoldScreen.CraftItem
 ```pascal
 function TRSGoldScreen.CraftItem(
-  item: ERSGoldItem; quantity: Integer; useSpaceBar: Boolean
+  gold: ERSGoldItem; amount: Integer; useSpace: Boolean
 ): Boolean;
 
 function TRSGoldScreen.CraftItem(
-  item: TRSItem; quantity: Integer = QUANTITY_ALL;
-  spaceBarProbability: Single = -1
+  gold: ERSGoldItem;
+  amount: Integer = QUANTITY_ALL;
+  spaceProbability: Single = -1
 ): Boolean; overload;
 ```
-Sets the quantity then crafts the requested item.
-If `UseSpaceBar = True` and the item is highlighted it presses **Space**,
+Sets the `amount` then crafts the requested item.
+If `useSpace = True` and the item is highlighted it presses **Space**,
 otherwise it clicks the item icon.
 *)
 function TRSGoldScreen.CraftItem(
-  item: ERSGoldItem; quantity: Integer; useSpaceBar: Boolean
+  gold: ERSGoldItem; amount: Integer; useSpace: Boolean
 ): Boolean;
 begin
-  if not Self.CanCraft(item) then Exit;
-
-  Result := Self.SetQuantity(quantity);
-  if not Result then
+  if not Self.CanCraft(gold) or not Self.SetQuantity(amount) then
     Exit;
 
-  if useSpaceBar and Self.IsHighlighted(item) then
+  if useSpace and Self.IsHighlighted(gold) then
     Keyboard.KeyPress(EKeyCode.SPACE)
   else
-    Mouse.Click(Self.ItemBoxes[item], EMouseButton.LEFT);
+    Mouse.Click(Self.SlotBoxes[gold], EMouseButton.LEFT);
+
+  Result := SleepUntil(not Self.IsOpen(), 200, 6 * TICK);
 end;
 
 function TRSGoldScreen.CraftItem(
-  item: ERSGoldItem; quantity: Integer = QUANTITY_ALL;
-  spaceBarProbability: Single = -1
+  gold: ERSGoldItem;
+  amount: Integer = QUANTITY_ALL;
+  spaceProbability: Single = -1
 ): Boolean; overload;
 begin
-  if spaceBarProbability = -1 then
-    spaceBarProbability := Biometrics.RandomDouble(0.5);
-  Result := Self.CraftItem(item, quantity, RandomBoolean(spaceBarProbability));
+  if spaceProbability = -1 then
+    spaceProbability := Biometrics.RandomDouble(0.5);
+  Result := Self.CraftItem(gold, amount, RandomBoolean(spaceProbability));
 end;
 
 var

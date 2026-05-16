@@ -384,7 +384,8 @@ var
 begin
   img.DrawBox(Self.Bounds);
   img.DrawBoxArray(Self.SlotBoxes, False);
-  img.DrawBoxArray(Self.ClickBoxes, False);
+  for i := 0 to High(Self.SlotBoxes) do
+    img.DrawText(ToStr(i), Self.SlotBoxes[i], [EImageTextAlign.CENTER, EImageTextAlign.VERTICAL_CENTER]);
   for i := 0 to High(Self.Buttons) do
     Self.Buttons[i].Draw(img);
 end;
