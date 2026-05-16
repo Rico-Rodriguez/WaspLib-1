@@ -22,10 +22,11 @@ ERSSilverItem = enum(OPAL_RING..TOPAZ_BRACELET);
 Enum representing the silver jewelry that can be crafted.
 *)
   ERSSilverItem = enum(
-    OPAL_RING, JADE_RING, TOPAZ_RING,
-    OPAL_NECKLACE, JADE_NECKLACE, TOPAZ_NECKLACE,
-    OPAL_AMULET, JADE_AMULET, TOPAZ_AMULET,
-    OPAL_BRACELET, JADE_BRACELET, TOPAZ_BRACELET
+    OPAL_RING,     OPAL_NECKLACE,  OPAL_AMULET,  OPAL_BRACELET,
+    JADE_RING,     JADE_NECKLACE,  JADE_AMULET,  JADE_BRACELET,
+    TOPAZ_RING,    TOPAZ_NECKLACE, TOPAZ_AMULET, TOPAZ_BRACELET,
+    HOLY_SYMBOL,   SILVER_SICKLE,  SILVER_BOLTS, SILVTHRILL_ROD,
+    UNHOLY_SYMBOL, LIGHTNING_ROD,  TIARA,        DEMONIC_SIGIL
   );
 
 (*
@@ -129,7 +130,7 @@ end;
 (*
 ## SilverScreen.WaitOpen
 ```pascal
-function TRSSilverScreen.WaitOpen(time, interval: Int32): Boolean;
+function TRSSilverScreen.WaitOpen(time, interval: Integer): Boolean;
 ```
 Returns true if the SilverScreen interface opens within `time` milliseconds.
 
@@ -138,7 +139,7 @@ Example:
 WriteLn SilverScreen.WaitOpen(5000);
 ```
 *)
-function TRSSilverScreen.WaitOpen(time, interval : Int32) : Boolean;
+function TRSSilverScreen.WaitOpen(time, interval : Integer) : Boolean;
 begin
   if interval < 0 then
     interval := RandomMode(100,50,1500);
@@ -149,23 +150,27 @@ end;
 ## SilverScreen.Close
 ```pascal
 function TRSSilverScreen.Close(PressEscape: Boolean): Boolean;
+
+function TRSSilverScreen.Close(
+  escapeProbability: Single = -1
+): Boolean; overload;
 ```
-Attempts to close the {ref}`SilverScreen` interface. If `PressEscape` is true, the escape key is
-pressed to close, otherwise the close button is clicked.
+Attempts to close the {ref}`SilverScreen` interface. If `pressEscape` is true,
+the escape key is pressed to close, otherwise the close button is clicked.
 
 Example:
 ```pascal
 WriteLn SilverScreen.Close(True);
 ```
 *)
-function TRSSilverScreen.Close(PressEscape : Boolean) : Boolean;
+function TRSSilverScreen.Close(pressEscape : Boolean) : Boolean;
 begin
   if not Self.IsOpen() then
     Exit(True);
 
-  Result := (not PressEscape and MSInterface.Close(False))
+  Result := (not pressEscape and MSInterface.Close(False))
             or
-            (PressEscape     and MSInterface.Close(True));
+            (pressEscape     and MSInterface.Close(True));
 
   if Result then
     Result := SleepUntil(not Self.IsOpen(),
@@ -173,42 +178,51 @@ begin
                          Random(1500,2000));
 end;
 
+function TRSSilverScreen.Close(
+  escapeProbability: Single = -1
+): Boolean; overload;
+begin
+  if escapeProbability = -1 then
+    escapeProbability := Biometrics.RandomDouble(0.5);
+  Result := Self.Close(RandomBoolean(escapeProbability));
+end;
+
 (*
 ## SilverScreen.SetQuantity
 ```pascal
-function TRSSilverScreen.SetQuantity(Amount: Int32): Boolean;
+function TRSSilverScreen.SetQuantity(amount: Integer): Boolean;
 ```
-Sets the quantity to craft. Pass -1 for "All". If a preset button (1, 5, 10, All)
-matches the amount, it will be clicked. Otherwise, the "X" button is used to
-enter a custom amount.
+Sets the quantity to craft. Pass 0 or any negative value for "All".
+
+If a preset button (1, 5, 10, All) matches the amount, it will be clicked.
+Otherwise, the "X" button is used to enter a custom amount.
 
 Example:
 ```pascal
 SilverScreen.SetQuantity(10);
+SilverScreen.SetQuantity(0); // All
 SilverScreen.SetQuantity(-1); // All
+SilverScreen.SetQuantity(QUANTITY_ALL); // All
 ```
 *)
-function TRSSilverScreen.SetQuantity(Amount: Int32): Boolean;
-const
-  ENABLED_COLOR  = $FFFFFF;   // white (active button)
-  DISABLED_COLOR = $1F98FF;   // blue  (inactive / clickable)
+function TRSSilverScreen.SetQuantity(amount: Integer): Boolean;
 var
-  txt : String;
-  btn : TRSButton;
+  txt: String;
+  btn: TRSButton;
 begin
-  txt := ToString(Amount);
-  if Amount = -1 then
+  txt := ToString(amount);
+  if amount <= QUANTITY_ALL then
     txt := 'All';
 
   { already selected? }
   for btn in Self.Buttons do
-    if (OCR.Locate(btn.Bounds, txt, [ENABLED_COLOR], 1, RSFonts.PLAIN_11) > 0.85)
+    if (OCR.Locate(btn.Bounds, txt, [RSFonts.WHITE], 1, RSFonts.PLAIN_11) > 0.85)
     and btn.Enabled then
       Exit(True);
 
   { preset button available? }
   for btn in Self.Buttons do
-    if OCR.Locate(btn.Bounds, txt, [DISABLED_COLOR], 1, RSFonts.PLAIN_11) > 0.85 then
+    if OCR.Locate(btn.Bounds, txt, [RSFonts.ORANGE], 1, RSFonts.PLAIN_11) > 0.85 then
     begin
       btn.Click();
       Exit(True);
@@ -216,7 +230,7 @@ begin
 
   { custom amount via “X” }
   for btn in Self.Buttons do
-    if OCR.Locate(btn.Bounds, 'X', [DISABLED_COLOR], 1, RSFonts.PLAIN_11) > 0.85 then
+    if OCR.Locate(btn.Bounds, 'X', [RSFonts.ORANGE], 1, RSFonts.PLAIN_11) > 0.85 then
     begin
       btn.Click();
       Exit(Chat.AnswerQuery('Enter amount', ToString(Amount), 3000));
@@ -224,70 +238,71 @@ begin
 end;
 
 (*
-## SilverScreen.CanCraftItem
+## SilverScreen.CanCraft
 ```pascal
-function TRSSilverScreen.CanCraftItem(Item: TRSItem; out Box: TBox): Boolean;
+function TRSSilverScreen.CanCraft(item: TRSItem; out bounds: TBox): Boolean;
 ```
-Checks if the specified item can be crafted. Returns true if the item is found
-and craftable, and outputs the click box for the item.
+Checks if the specified `item` can be crafted. Returns true if `item` is found
+and is craftable, and outputs the click box `bounds` for the item.
 
 Example:
 ```pascal
-var box: TBox;
-if SilverScreen.CanCraftItem('Opal ring', box) then
-  WriteLn 'Can craft opal ring';
+var bounds: TBox;
+begin
+  if SilverScreen.CanCraft('Opal ring', bounds) then
+    WriteLn 'Can craft opal ring';
+end;
 ```
 *)
-function TRSSilverScreen.CanCraftItem(Item : TRSItem; out Box : TBox) : Boolean;
-const
-  READY_GOLD  = $1F98FF;  // gold text (craftable)
-  READY_WHITE = $FFFFFF;  // white (selected/ready)
+function TRSSilverScreen.CanCraft(item: TRSItem; out bounds: TBox): Boolean;
 var
-  TPA : TPointArray;
-  Slot: Integer;
+  slot: Integer;
 begin
-  if not Self.IsOpen() then Exit;
-
-  if not Self.Items.Find([Item], Slot) then
+  if not Self.IsOpen() then
+    Exit;
+  if not Self.Items.Find([item], slot) then
     Exit;
 
-  Box := Self.ClickBoxes[Slot];
-
-  TPA := Target.FindColor(READY_GOLD, 1, Box) + Target.FindColor(READY_WHITE, 1, Box);
-  Result := TPA.Length > 0;
+  bounds := Self.ClickBoxes[slot];
+  Result := Target.HasColor(RSFonts.ORANGE, 1, 1, bounds) or
+            Target.HasColor(RSFonts.WHITE, 1, 1, bounds);
 end;
 
 
 (*
-## SilverScreen.IsItemHighlighted
+## SilverScreen.IsHighlighted
 ```pascal
-function TRSSilverScreen.IsItemHighlighted(Item: TRSItem): Boolean;
+function TRSSilverScreen.IsHighlighted(item: TRSItem): Boolean;
 ```
 Returns true if the specified item is currently highlighted/selected in the interface.
 You probably won't need to work with this directly
 
 Example:
 ```pascal
-if SilverScreen.IsItemHighlighted('Opal ring') then
+if SilverScreen.IsHighlighted('Opal ring') then
   Keyboard.KeyPress(EKeyCode.SPACE);
 ```
 *)
-function TRSSilverScreen.IsItemHighlighted(Item : TRSItem) : Boolean;
+function TRSSilverScreen.IsHighlighted(item : TRSItem) : Boolean;
 var
-  highlight : TColor := 4807018;
-  box       : TBox;
-  TPA       : TPointArray;
+  b: TBox;
 begin
-  if not Self.IsOpen() then Exit;
-  if not Self.CanCraftItem(Item, box) then Exit;
-  TPA := Target.FindColor(highlight, 2, box);
-  Result := TPA.Length > 0;
+  if not Self.IsOpen() or not Self.CanCraft(item, b) then
+    Exit;
+  Result := Target.HasColor($49596A, 2, 1, b);
 end;
 
 (*
 ## SilverScreen.CraftItem
 ```pascal
-function TRSSilverScreen.CraftItem(Item: TRSItem; Quantity: Int32; UseSpaceBar: Boolean): Boolean;
+function TRSSilverScreen.CraftItem(
+  item : TRSItem; quantity: Integer; useSpaceBar: Boolean
+): Boolean;
+
+function TRSSilverScreen.CraftItem(
+  item: TRSItem; quantity: Integer = QUANTITY_ALL;
+  spaceBarProbability: Single = -1
+): Boolean; overload;
 ```
 Crafts the specified item with the given quantity. If `UseSpaceBar` is true and the
 item is already highlighted, spacebar will be pressed instead of clicking.
@@ -297,24 +312,34 @@ Example:
 SilverScreen.CraftItem('Opal ring', 10, True);
 ```
 *)
-function TRSSilverScreen.CraftItem(Item : TRSItem; Quantity : Int32;
-                                   UseSpaceBar : Boolean) : Boolean;
+function TRSSilverScreen.CraftItem(
+  item : TRSItem; quantity: Integer; useSpaceBar: Boolean
+): Boolean;
 var
   box : TBox;
 begin
-  WriteLn 1;
-  if not Self.CanCraftItem(Item, box) then Exit;
-  
-  WriteLn 2;
-  Result := Self.SetQuantity(Quantity);
-  WriteLn 3;
-  WriteLn Result;
-  if not Result then Exit;
+  if not Self.CanCraft(item, box) then
+    Exit;
 
-  if UseSpaceBar and Self.IsItemHighlighted(Item) then
+  Result := Self.SetQuantity(quantity);
+
+  if not Result then
+    Exit;
+
+  if useSpaceBar and Self.IsHighlighted(item) then
     Keyboard.KeyPress(EKeyCode.SPACE)
   else
     Mouse.Click(box, EMouseButton.LEFT);
+end;
+
+function TRSSilverScreen.CraftItem(
+  item: TRSItem; quantity: Integer = QUANTITY_ALL;
+  spaceBarProbability: Single = -1
+): Boolean; overload;
+begin
+  if spaceBarProbability = -1 then
+    spaceBarProbability := Biometrics.RandomDouble(0.5);
+  Result := Self.CraftItem(item, quantity, RandomBoolean(spaceBarProbability));
 end;
 
 var
