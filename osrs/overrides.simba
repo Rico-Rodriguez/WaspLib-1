@@ -281,7 +281,7 @@ var
   i: Int32;
   str: String;
 begin
-  Result := Self.HasOption('Congratulations', True, Self.GetColors([ERSChatColor.NAVY]));
+  Result := Self.HasOption('Congratulations', True, [RSFonts.DARK_BLUE]);
   if not Result then Exit;
 
   b := Self.Bounds;

@@ -10,6 +10,11 @@ A chat options menu.
 {$DEFINE WL_CHAT_OPTIONS_INCLUDED}
 {$INCLUDE_ONCE WaspLib/osrs.simba}
 
+var
+  CHAT_OPTION_COLORS: TColorArray := [
+    RSFonts.BLACK, RSFonts.WHITE, RSFonts.BLUE
+  ];
+
 type
 (*
 ## TRSChatOption
@@ -25,7 +30,10 @@ Helper record to handler chat options.
 (*
 ## Chat.GetOptions
 ```pascal
-function TRSChat.GetOptions(colors: TIntegerArray = []): TRSChatOptionArray;
+function TRSChat.GetOptions(
+  colors: TColorArray = [RSFonts.BLACK, RSFonts.WHITE]
+): TRSChatOptionArray;
+
 function TRSChat.GetOptions(): String; overload;
 ```
 Returns every chat option visible with the specified `colors`.
@@ -43,16 +51,16 @@ img.Free();
 Highlighting Chat.GetOptions()
 ```
 *)
-function TRSChat.GetOptions(colors: TIntegerArray = []): TRSChatOptionArray;
+function TRSChat.GetOptions(
+  colors: TColorArray = [RSFonts.BLACK, RSFonts.WHITE]
+): TRSChatOptionArray;
 var
   pt: TPoint;
   i: Integer;
 begin
-  if colors = [] then
-    colors := Self.GetColors([ERSChatColor.BLACK, ERSChatColor.WHITE]);
-
   OCR.RecognizeLines(Self.Bounds, RSFonts.QUILL_8, colors, 0);
-  if OCR.Engine.Matches = [] then Exit;
+  if OCR.Engine.Matches = [] then
+    Exit;
 
   SetLength(Result, Length(OCR.Engine.Matches));
 
@@ -95,13 +103,16 @@ end;
 (*
 ## Chat.FindOption
 ```pascal
-function TRSChat.FindOption(chatOption: String; caseSensitive: Boolean = True; colors: TIntegerArray = []): TRSChatOption;
+function TRSChat.FindOption(
+  option: String;
+  caseSensitive: Boolean = True;
+  colors: TColorArray = CHAT_OPTION_COLORS
+): TRSChatOption;
 ```
-Returns the chat option with the specified `chatOption` text if it's visible with the specified `colors`.
+Returns the chat option with the specified `option` text if it's visible with the specified `colors`.
 The result is returned as a {ref}`TRSChatOption`.
 
-`chatOption` doesn't have to be the entire string of the option, partially is fine.
-If `colors` is empty like it is by default, `$0`, `$FFFFFF` and `$FF0000` (black, white and blue) are used.
+`option` doesn't have to be the entire string of the option, partially is fine.
 
 Example:
 ```pascal
@@ -112,43 +123,56 @@ ShowOnTarget(option.Bounds);
 Highlighting Chat.FindOption()
 ```
 *)
-function TRSChat.FindOption(chatOption: String; caseSensitive: Boolean = True; colors: TIntegerArray = []): TRSChatOption;
+function TRSChat.FindOption(
+  option: String;
+  caseSensitive: Boolean = True;
+  colors: TColorArray = CHAT_OPTION_COLORS
+): TRSChatOption;
 var
-  option: TRSChatOption;
+  opt: TRSChatOption;
 begin
-  if colors = [] then
-    colors := Self.GetColors([ERSChatColor.BLACK, ERSChatColor.WHITE, ERSChatColor.BLUE]);
-  for option in Self.GetOptions(colors) do
-    if option.Text.Contains(chatOption, caseSensitive) then
-      Exit(option);
+  for opt in Self.GetOptions(colors) do
+    if opt.Text.Contains(option, caseSensitive) then
+      Exit(opt);
 end;
 
 (*
 ## Chat.HasOption
 ```pascal
-function TRSChat.HasOption(chatOption: String; caseSensitive: Boolean = True; colors: TIntegerArray = []): Boolean;
+function TRSChat.HasOption(
+  option: String;
+  caseSensitive: Boolean = True;
+  colors: TColorArray = CHAT_OPTION_COLORS
+): Boolean;
 ```
-Returns True/False if the chat option with the specified `chatOption` text is visible with the specified `colors`.
+Returns True/False if the chat option with the specified `option` text is visible with the specified `colors`.
 
-`chatOption` doesn't have to be the entire string of the option, partially is fine.
-If `colors` is empty like it is by default, `$0`, `$FFFFFF` and `$FF0000` (black, white and blue) are used.
+`option` doesn't have to be the entire string of the option, partially is fine.
 
 Example:
 ```pascal
 WriteLn Chat.HasOption('access my bank');
 ```
 *)
-function TRSChat.HasOption(chatOption: String; caseSensitive: Boolean = True; colors: TIntegerArray = []): Boolean;
+function TRSChat.HasOption(
+  option: String;
+  caseSensitive: Boolean = True;
+  colors: TColorArray = CHAT_OPTION_COLORS
+): Boolean;
 begin
-  if colors = [] then
-    colors := Self.GetColors([ERSChatColor.BLACK, ERSChatColor.WHITE, ERSChatColor.BLUE]);
-  Result := Self.FindOption(chatOption, caseSensitive, colors) <> [];
+  Result := Self.FindOption(option, caseSensitive, colors) <> Default(TRSChatOption);
 end;
 
 (*
 ## Chat.WaitOption
 ```pascal
-function TRSChat.WaitOption(chatOption: String; caseSensitive: Boolean = True; colors: TIntegerArray = []; time: Integer = 600; interval: Integer = -1): Boolean;
+function TRSChat.WaitOption(
+  option: String;
+  caseSensitive: Boolean = True;
+  colors: TColorArray = CHAT_OPTION_COLORS;
+  time: Integer = 600;
+  interval: Integer = -1
+): Boolean;
 ```
 Same as {ref}`Chat.HasOption` but waits up to `time` milliseconds for it to be true.
 
@@ -157,53 +181,78 @@ Example:
 WriteLn Chat.WaitOption('access my bank');
 ```
 *)
-function TRSChat.WaitOption(chatOption: String; caseSensitive: Boolean = True; colors: TIntegerArray = []; time: Integer = 600; interval: Integer = -1): Boolean;
+function TRSChat.WaitOption(
+  option: String;
+  caseSensitive: Boolean = True;
+  colors: TColorArray = CHAT_OPTION_COLORS;
+  time: Integer = 600;
+  interval: Integer = -1
+): Boolean;
 begin
-  if colors = [] then
-    colors := Self.GetColors([ERSChatColor.BLACK, ERSChatColor.WHITE, ERSChatColor.BLUE]);
-  if interval < 0 then interval := RandomMode(100, 50, 1500);
-  Result := SleepUntil(Self.HasOption(chatOption, caseSensitive, colors), time, interval);
+  if interval < 0 then
+    interval := RandomMode(100, 50, 1500);
+  Result := SleepUntil(Self.HasOption(option, caseSensitive, colors), time, interval);
 end;
 
 
 (*
 ## Chat.Select
 ```pascal
-function TRSChat.Select(chatOption: String; caseSensitive: Boolean = True; keyboardProbability: Single = -1; colors: TIntegerArray = []): Boolean;
+function TRSChat.Select(
+  option: String;
+  caseSensitive: Boolean = True;
+  keyboardProbability: Single = -1;
+  colors: TColorArray = [RSFonts.BLACK, RSFonts.WHITE]
+): Boolean;
 ```
-Selects a chat option whose text matches `chatOption`.
+Selects a chat option whose text matches `option`.
 
 Example:
 ```pascal
 WriteLn Chat.Select('access my bank');
 ```
 *)
-function TRSChat.Select(chatOption: String; caseSensitive: Boolean = True; keyboardProbability: Single = -1; colors: TIntegerArray = []): Boolean;
+function TRSChat.Select(
+  option: String;
+  caseSensitive: Boolean = True;
+  keyboardProbability: Single = -1;
+  colors: TColorArray = [RSFonts.BLACK, RSFonts.WHITE]
+): Boolean;
 var
-  option: TRSChatOption;
+  opt: TRSChatOption;
 begin
-  if colors = [] then
-    colors := Self.GetColors([ERSChatColor.BLACK, ERSChatColor.WHITE]);
-  option := Self.FindOption(chatOption, caseSensitive, colors);
-  if option = [] then Exit;
+  opt := Self.FindOption(option, caseSensitive, colors);
+  if opt = [] then Exit;
 
   if keyboardProbability < 0 then
     keyboardProbability := Biometrics.RandomDouble(0.5);
 
   if RandomBoolean(keyboardProbability) then
-    Keyboard.KeyPress(option.Key)
+    Keyboard.KeyPress(opt.Key)
   else
-    Mouse.Click(option.Bounds, EMouseButton.LEFT);
+    Mouse.Click(opt.Bounds, EMouseButton.LEFT);
 
   Result := True;
 end;
 
 
+(*
+## Chat.HasContinue
+```pascal
+function TRSChat.HasContinue(): Boolean;
+```
+Returns true if there's a "Click here to continue" option available.
+
+Example:
+```pascal
+WriteLn Chat.HasContinue();
+```
+*)
 function TRSChat.HasContinue(): Boolean;
 var
-  colors: TIntegerArray;
+  colors: TColorArray;
 begin
-  colors := Self.GetColors([ERSChatColor.BLUE, ERSChatColor.WHITE]);
+  colors := [RSFonts.BLUE, RSFonts.WHITE];
   Result := Self.HasOption('Click here to continue', True, colors) or
             Self.HasOption('Please wait', True, colors);
 end;
@@ -222,11 +271,12 @@ WriteLn Chat.ContinueChat();
 *)
 function TRSChat.Continue(keyboardProbability: Single = -1): Boolean;
 var
-  colors: TIntegerArray;
+  colors: TColorArray;
 begin
   if keyboardProbability < 0 then
     keyboardProbability := Biometrics.RandomDouble(0.5);
-  colors := Self.GetColors([ERSChatColor.BLUE, ERSChatColor.WHITE]);
+
+  colors := [RSFonts.BLUE, RSFonts.WHITE];
   if not Self.Select('Click here to continue', True, keyboardProbability, colors) then
     Exit;
 
@@ -237,7 +287,9 @@ end;
 (*
 ## Chat.ContinueUntilOption
 ```pascal
-function TRSChat.ContinueUntilOption(option: String; timeout: Integer = 10000): Boolean;
+function TRSChat.ContinueUntilOption(
+  option: String; timeout: Integer = 10 * ONE_SECOND
+): Boolean;
 ```
 Selects the "Click here to continue" continuously until `option` is available
 as a chat option or until we reach the `timeout` which is measured in milliseconds.
@@ -247,7 +299,9 @@ Example:
 WriteLn Chat.ContinueUntilOption('access my bank');
 ```
 *)
-function TRSChat.ContinueUntilOption(option: String; timeout: Integer = 10000): Boolean;
+function TRSChat.ContinueUntilOption(
+  option: String; timeout: Integer = 10 * ONE_SECOND
+): Boolean;
 begin
   timeout += Time();
   while (Time() < timeout) do
@@ -303,7 +357,12 @@ end;
 (*
 ## Chat.WaitTitle
 ```pascal
-function TRSChat.WaitTitle(text: String; time: Integer = 600; similarity: Single = 0.8; interval: Integer = -1): Boolean;
+function TRSChat.WaitTitle(
+  text: String;
+  time: Integer = TICK;
+  similarity: Single = 0.8;
+  interval: Integer = -1
+): Boolean;
 ```
 Returns True/False if the current chat title matches `text`.
 
@@ -312,9 +371,15 @@ Example:
 WriteLn Chat.WaitTitle('Select an option');
 ```
 *)
-function TRSChat.WaitTitle(text: String; time: Integer = 600; similarity: Single = 0.8; interval: Integer = -1): Boolean;
+function TRSChat.WaitTitle(
+  text: String;
+  time: Integer = TICK;
+  similarity: Single = 0.8;
+  interval: Integer = -1
+): Boolean;
 begin
-  if interval < 0 then interval := RandomMode(100, 50, 1500);
+  if interval < 0 then
+    interval := RandomMode(100, 50, 1500);
   Result := SleepUntil(Self.IsTitle(text, similarity), time, interval);
 end;
 
