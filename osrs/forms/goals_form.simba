@@ -20,7 +20,11 @@ type
     LevelsForm: TLazForm;
     LevelsButton: TLazButton;
     Config: TConfigJSON;
-    const PATH: String = WLEnv.CacheDir + 'skills' + PATH_SEP;
+
+    Unzipping: Boolean;
+    Timeout: TCountDown;
+    Version, CacheDir: String;
+    const ZIP: String = WLEnv.AssetsDir + 'images' + PATH_SEP + 'skills.zip';
   end;
 
 {$H-}
@@ -156,7 +160,7 @@ begin
   for skill := Low(ERSSkill) to High(ERSSkill)-1 do
   begin
     img := TLazImage.CreateEx(Self.LevelsForm);
-    img.Picture.LoadFromFile(Self.PATH + ToStr(skill) + '.png');
+    img.Picture.LoadFromFile(Self.CacheDir + ToStr(skill) + '.png');
     img.SetBounds(
       70 + 90 * (Ord(skill) mod 3),
       info.Bottom + 10 + 27 * (Ord(skill) div 3), 25, 25
@@ -182,7 +186,7 @@ begin
   end;
 
   img := TLazImage.CreateEx(Self.LevelsForm);
-  img.Picture.LoadFromFile(Self.PATH + ToStr(skill) + '.png');
+  img.Picture.LoadFromFile(Self.CacheDir + ToStr(skill) + '.png');
   img.SetBounds(150, info.Bottom + 10 + 27 * (Ord(skill) div 3), 25, 25);
 
   img.Stretch := True;
@@ -219,7 +223,25 @@ function TGoalsFormHelper.Create(owner: Pointer; actions, time, levels: Boolean 
 var
   lbl: TLazLabel;
   y, size: Integer;
+  timer: TCountDown;
 begin
+  timer.Start(8 * ONE_SECOND);
+  while Self.Unzipping do
+  begin
+    Sleep(100);
+    if timer.IsFinished then
+    begin
+      WriteLn GetDebugLn('GoalsForm', 'Unzipping files, please wait.');
+      timer.Restart();
+    end;
+
+    if Self.Timeout.IsFinished then
+    begin
+      DirDelete(Self.CacheDir, False);
+      raise GetDebugLn('GoalsForm', 'Timed out unzipping skill images.');
+    end;
+  end;
+
   Self.Config.Setup('goals' + PATH_SEP + ToStr(ProfileIndex));
 
   case orientation of
@@ -350,7 +372,48 @@ begin
   end;
 end;
 
+procedure TGoalsFormHelper.Unzipped(constref result: TASyncUnzipResult);
 var
-{$H-}
+  name, msg: String;
+begin
+  if not result.Success then
+  begin
+    DirDelete(Self.CacheDir, False);
+    raise GetDebugLn('GoalsForm', result.Exception);
+  end;
+  name := PathExtractName(result.ZipFile);
+  msg := 'Finished async unzip of ' +  name + ' in ' + ToStr(Round(result.TimeUsed, 2)) + 'ms.';
+  WriteLn GetDebugLn('GoalsForm', msg, ELogLevel.SUCCESS);
+  Self.Unzipping := False;
+end;
+
+procedure TGoalsFormHelper.Setup();
+var
+  path, tmp: String;
+begin
+  Self.Version := WLAssets.JSON.Item['images/skills.zip'].AsString;
+  Self.CacheDir := WLEnv.CacheDir + 'skills' + PATH_SEP;
+
+  //Delete old cache files if they exist
+  for path in DirList(Self.CacheDir) do
+  begin
+    tmp := Copy(path, Length(path) - Length(Self.Version) + 1, Length(path));
+    if tmp = Self.Version then Continue;
+    DirDelete(path, False);
+  end;
+
+  Self.CacheDir += Self.Version + PATH_SEP;
+
+  if not DirCreate(Self.CacheDir) then
+    raise GetDebugLn('SpellFinder', 'Failed to create cache directory: ' + Self.CacheDir);
+
+  if DirList(Self.CacheDir) = [] then
+  begin
+    Self.Unzipping := True;
+    Self.Timeout.Start(2 * ONE_MINUTE);
+    Async.FileUnZip(Self.ZIP, Self.CacheDir, @Self.Unzipped);
+  end;
+end;
+
+var
   GoalsForm: TGoalsFormHelper;
-{$H+}
