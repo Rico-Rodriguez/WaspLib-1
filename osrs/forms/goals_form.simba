@@ -1,0 +1,356 @@
+(*
+# Goals Form
+This page is about the {ref}`Goals Form`, a dedicated `TLazForm` to configure
+skill level goals for a script.
+
+This is meant to be used with {ref}`TScriptForm` with
+{ref}`TScriptForm.CreateGoalsButton` and will setup a small `TLazPanel` on it
+with a checkbox and a button to open the form:
+```{figure} ../../images/goalsform.png
+```
+*)
+{$DEFINE WL_GOALS_FORM_INCLUDED}
+{$INCLUDE_ONCE WaspLib/osrs.simba}
+
+type
+  TGoalsFormHelper = record
+    Actions, Time: ^UInt64;
+    Stats: ^Boolean;
+    ActionsEdit, TimeEdit: TLazSpinEdit;
+    LevelsForm: TLazForm;
+    LevelsButton: TLazButton;
+    Config: TConfigJSON;
+    const PATH: String = WLEnv.CacheDir + 'skills' + PATH_SEP;
+  end;
+
+{$H-}
+procedure TGoalsFormHelper.OnClose(sender: TLazObject; var closeAction: ELazFormCloseAction);
+begin
+  Self.LevelsButton.Caption := 'Open stats goals';
+end;
+{$H+}
+
+procedure TGoalsFormHelper.OnStatsToggle(sender: TLazObject);
+var
+  checkbox: TLazCheckBox;
+  checked: Boolean;
+begin
+  FormUtils.OnCheckboxToggleParent(sender);
+  checkbox := TLazCheckBox(sender);
+  checked := checkbox.IsChecked();
+  Self.Stats^ := checked;
+
+  if checked then
+    checkbox.Caption := 'Disable'
+  else
+    checkbox.Caption := 'Enable';
+
+  if Self.Config.Data.Assert('stats', EJSONType.BOOL) then
+    Self.Config.Data.Item['stats'].AsBool := checked
+  else
+    Self.Config.Data.AddBool('stats', checked);
+
+  Self.Config.Save();
+end;
+
+procedure TGoalsFormHelper.OnLevelsClick(sender: TLazObject);
+begin
+  if Self.LevelsForm.Showing then
+  begin
+    Self.LevelsForm.Close();
+    Exit;
+  end;
+
+  TLazButton(sender).Caption := 'Close stats goals';
+  Self.LevelsForm.ShowModal();
+end;
+
+procedure TGoalsFormHelper.OnActionsChange(sender: TLazObject);
+var
+  spinner: TLazSpinEdit;
+  name: String;
+begin
+  spinner := TLazSpinEdit(sender);
+  name := spinner.Name;
+
+  Self.Actions^ := spinner.Value;
+
+  if Self.Config.Data.Assert(name, EJSONType.INT) then
+    Self.Config.Data.Item[name].AsInt := spinner.Value
+  else
+    Self.Config.Data.AddInt(name, spinner.Value);
+  Self.Config.Save();
+end;
+
+procedure TGoalsFormHelper.OnTimeChange(sender: TLazObject);
+var
+  spinner: TLazSpinEdit;
+  name: String;
+begin
+  spinner := TLazSpinEdit(sender);
+  name := spinner.Name;
+
+  Self.Time^ := spinner.Value;
+
+  if Self.Config.Data.Assert(name, EJSONType.INT) then
+    Self.Config.Data.Item[name].AsInt := spinner.Value
+  else
+    Self.Config.Data.AddInt(name, spinner.Value);
+  Self.Config.Save();
+end;
+
+procedure TGoalsFormHelper.OnLevelChange(sender: TLazObject);
+var
+  spinner: TLazSpinEdit;
+  name: String;
+  skill: ERSSkill;
+begin
+  spinner := TLazSpinEdit(sender);
+  name := spinner.Name;
+  skill := ERSSkill(StrToInt(name.After('skill_')));
+
+  Stats.Goals[skill] := spinner.Value;
+
+  if Self.Config.Data.Assert(name, EJSONType.INT) then
+    Self.Config.Data.Item[name].AsInt := Stats.Goals[skill]
+  else
+    Self.Config.Data.AddInt(name, Stats.Goals[skill]);
+  Self.Config.Save();
+end;
+
+procedure TGoalsFormHelper.SetupLevelsForm(owner: Pointer);
+var
+  info: TLazLabel;
+  skill: ERSSkill;
+  key: String;
+  img: TLazImage;
+  edit: TLazSpinEdit;
+  checkbox: TLazCheckBox;
+begin
+  Self.LevelsForm := TLazForm.Create(TLazComponent(owner));
+  Self.LevelsForm.Caption := 'Stats Goals';
+  Self.LevelsForm.Position := ELazFormPosition.OwnerFormCenter;
+  Self.LevelsForm.BorderStyle := ELazFormBorderStyle.Dialog;
+  Self.LevelsForm.Width := 400;
+  Self.LevelsForm.Height := 400;
+  Self.LevelsForm.Position := ELazFormPosition.ScreenCenter;
+  Self.LevelsForm.OnClose := @Self.OnClose;
+
+  checkbox := TLazCheckBox.CreateEx(Self.LevelsForm, '', '', 10, 10);
+
+  info := TLazLabel.CreateEx(
+    Self.LevelsForm,
+    'Configure skill limits for scripts to stop.' + LINE_SEP +
+    'Setting a skill to 0 means it has no limit.' + LINE_SEP +
+    'Close this window when you are done.',
+    '',
+    Round(Self.LevelsForm.Width * 0.05),
+    40,
+    Round(Self.LevelsForm.Width * 0.9),
+    70
+  );
+  info.Alignment := ELazAlignment.Center;
+  info.Font.Name := 'Courier New';
+  info.OptimalFill := True;
+
+  for skill := Low(ERSSkill) to High(ERSSkill)-1 do
+  begin
+    img := TLazImage.CreateEx(Self.LevelsForm);
+    img.Picture.LoadFromFile(Self.PATH + ToStr(skill) + '.png');
+    img.SetBounds(
+      70 + 90 * (Ord(skill) mod 3),
+      info.Bottom + 10 + 27 * (Ord(skill) div 3), 25, 25
+    );
+    img.Stretch := True;
+    img.Proportional := True;
+
+    edit := TLazSpinEdit.CreateEx(
+      Self.LevelsForm, '', '', img.Right + 5, img.Top, 50
+    );
+    edit.MinValue := 0;
+    edit.MaxValue := 99;
+    edit.Increment := 5;
+    edit.ValueEmpty := False;
+
+    key := 'skill_' + ToStr(Ord(skill));
+    edit.Name := key;
+
+    if Self.Config.Data.Assert(key, EJSONType.INT) then
+      Stats.Goals[skill] := Self.Config.Data.Item[key].AsInt;
+    edit.Value := Stats.Goals[skill];
+    edit.OnChange := @Self.OnLevelChange;
+  end;
+
+  img := TLazImage.CreateEx(Self.LevelsForm);
+  img.Picture.LoadFromFile(Self.PATH + ToStr(skill) + '.png');
+  img.SetBounds(150, info.Bottom + 10 + 27 * (Ord(skill) div 3), 25, 25);
+
+  img.Stretch := True;
+  img.Proportional := True;
+
+  edit := TLazSpinEdit.CreateEx(
+    Self.LevelsForm, '', '', img.Right + 5, img.Top, 80
+  );
+  edit.MinValue := 0;
+  edit.MaxValue := 2376;
+  edit.Increment := 5;
+  edit.ValueEmpty := False;
+
+  key := 'skill_' + ToStr(Ord(skill));
+  edit.Name := key;
+
+  if Self.Config.Data.Assert(key, EJSONType.INT) then
+    Stats.Goals[skill] := Self.Config.Data.Item[key].AsInt;
+  edit.Value := Stats.Goals[skill];
+  edit.OnChange := @Self.OnLevelChange;
+
+  if Self.Config.Data.Assert('stats', EJSONType.BOOL) then
+    checkbox.SetChecked(Self.Config.Data.Item['stats'].AsBool);
+
+  if not checkbox.IsChecked() then
+    Self.OnStatsToggle(checkbox)
+  else
+    checkbox.Caption := 'Disable';
+  checkbox.OnChange := @Self.OnStatsToggle;
+end;
+
+
+function TGoalsFormHelper.Create(owner: Pointer; actions, time, levels: Boolean = True; orientation: EOrientation = EOrientation.VERTICAL): TLazPanel;
+var
+  lbl: TLazLabel;
+  y, size: Integer;
+begin
+  Self.Config.Setup('goals' + PATH_SEP + ToStr(ProfileIndex));
+
+  case orientation of
+    EOrientation.HORIZONTAL:
+    begin
+      Result := TLazPanel.CreateEx(owner, 0, 0, 0, 40);
+
+      if levels then
+      begin
+        Self.LevelsButton := TLazButton.CreateEx(
+          Result, 'Open stats goals', 'Open the stats goals form.',
+          10, y, 140
+        );
+        Self.LevelsButton.Align := ELazAlign.Left;
+        Self.LevelsButton.BorderSpacing.Top    := 6;
+        Self.LevelsButton.BorderSpacing.Bottom := 6;
+        Self.LevelsButton.BorderSpacing.Left   := 5;
+      end;
+
+      if time then
+      begin
+        lbl := TLazLabel.CreateEx(Result, 'minutes', 'Maximum amount of time in minutes for the bot to stop.');
+        lbl.Align := ELazAlign.Left;
+        lbl.BorderSpacing.Top    := 10;
+        lbl.BorderSpacing.Bottom := 10;
+        lbl.BorderSpacing.Left   := 5;
+        lbl.BorderSpacing.Right  := 30;
+        Self.TimeEdit := TLazSpinEdit.CreateEx(Result, '', 'Maximum amount of time in minutes for the bot to stop.', 0, 0, 80);
+        Self.TimeEdit.Align := ELazAlign.Left;
+        Self.TimeEdit.BorderSpacing.Around := 8;
+        lbl := TLazLabel.CreateEx(Result, 'Stop after', 'Maximum amount of time in minutes for the bot to stop.');
+        lbl.Align := ELazAlign.Left;
+        lbl.BorderSpacing.Top    := 10;
+        lbl.BorderSpacing.Bottom := 10;
+        lbl.BorderSpacing.Left   := 30;
+        lbl.BorderSpacing.Right  := 5;
+        size += 234;
+      end;
+
+      if actions then
+      begin
+        lbl := TLazLabel.CreateEx(Result, 'actions', 'Maximum amount of actions for the bot to stop.');
+        lbl.Align := ELazAlign.Left;
+        lbl.BorderSpacing.Top    := 10;
+        lbl.BorderSpacing.Bottom := 10;
+        lbl.BorderSpacing.Left   := 5;
+        lbl.BorderSpacing.Right  := 30;
+        Self.ActionsEdit := TLazSpinEdit.CreateEx(Result, '', 'Maximum amount of actions for the bot to stop.', 0, 0, 80);
+        Self.ActionsEdit.Align := ELazAlign.Left;
+        Self.ActionsEdit.BorderSpacing.Around := 8;
+        lbl := TLazLabel.CreateEx(Result, 'Stop after', 'Maximum amount of actions for the bot to stop.');
+        lbl.Align := ELazAlign.Left;
+        lbl.BorderSpacing.Top    := 10;
+        lbl.BorderSpacing.Bottom := 10;
+        lbl.BorderSpacing.Left   := 30;
+        lbl.BorderSpacing.Right  := 5;
+        size += 234;
+      end;
+
+      Result.Width := size;
+    end;
+
+    EOrientation.VERTICAL:
+    begin
+      Result := TLazPanel.CreateEx(owner, 0, 0, 240, 0);
+      y := 10;
+
+      if actions then
+      begin
+        lbl := TLazLabel.CreateEx(Result, 'Stop after', 'Maximum amount of actions for the bot to stop.', 10, y);
+        Self.ActionsEdit := TLazSpinEdit.CreateEx(Result, '', 'Maximum amount of actions for the bot to stop.', 0, 0, 80);
+        Self.ActionsEdit.AnchorHorizontally(lbl, 34);
+        Self.ActionsEdit.BorderSpacing.Top := -2;
+        lbl := TLazLabel.CreateEx(Result, 'actions', 'Maximum amount of actions for the bot to stop.');
+        lbl.AnchorHorizontally(Self.ActionsEdit, 5);
+        lbl.BorderSpacing.Top := 2;
+        y += 30;
+        size += 34;
+      end;
+
+      if time then
+      begin
+        lbl := TLazLabel.CreateEx(Result, 'Stop after', 'Maximum amount of time in minutes for the bot to stop.', 10, y);
+        Self.TimeEdit := TLazSpinEdit.CreateEx(Result, '', 'Maximum amount of time in minutes for the bot to stop.', 0, 0, 80);
+        Self.TimeEdit.AnchorHorizontally(lbl, 34);
+        Self.TimeEdit.BorderSpacing.Top := -2;
+        lbl := TLazLabel.CreateEx(Result, 'minutes', 'Maximum amount of time in minutes for the bot to stop.');
+        lbl.AnchorHorizontally(Self.TimeEdit, 5);
+        lbl.BorderSpacing.Top := 2;
+        y += 30;
+        size += 34;
+      end;
+
+      if levels then
+      begin
+        Self.LevelsButton := TLazButton.CreateEx(
+          Result, 'Open stats goals', 'Open the stats goals form.',
+          10, y, 140
+        );
+      end;
+
+      Result.Height := size;
+    end;
+  end;
+
+  Result.BevelWidth := 0;
+
+  if actions then
+  begin
+    if Self.Config.Data.Assert('actions', EJSONType.INT) then
+      Self.ActionsEdit.Value := Self.Config.Data.Item['actions'].AsInt;
+    Self.ActionsEdit.Name := 'actions';
+    Self.ActionsEdit.OnChange := @Self.OnActionsChange;
+  end;
+
+  if time then
+  begin
+    if Self.Config.Data.Assert('time', EJSONType.INT) then
+      Self.TimeEdit.Value := Self.Config.Data.Item['time'].AsInt;
+    Self.TimeEdit.Name := 'time';
+    Self.TimeEdit.OnChange := @Self.OnTimeChange;
+  end;
+
+  if levels then
+  begin
+    Self.LevelsButton.OnClick := @Self.OnLevelsClick;
+    Self.SetupLevelsForm(owner);
+  end;
+end;
+
+var
+{$H-}
+  GoalsForm: TGoalsFormHelper;
+{$H+}

@@ -30,20 +30,11 @@ procedure TRecorderFormHelper.OnEnabledChange(sender: TLazObject);
 var
   checkbox: TLazCheckBox;
   checked: Boolean;
-  parent: TLazWinControl;
-  i: Integer;
-  control: TLazComponent;
 begin
+  FormUtils.OnCheckboxToggleParent(sender);
+
   checkbox := TLazCheckBox(sender);
   checked := checkbox.IsChecked();
-  parent := checkbox.Parent;
-
-  for i := 0 to parent.ComponentCount-1 do
-  begin
-    control := parent.GetComponent(i);
-    if checkbox <> control then
-      TLazControl(control).Enabled := checked;
-  end;
 
   SimbaRecorder.Enabled := checked;
 

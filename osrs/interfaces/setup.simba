@@ -3,10 +3,17 @@
 {$INCLUDE_ONCE WaspLib/osrs.simba}
 
 procedure SetupInterfaces();
-{$IFDEF WL_DEBUG_INTERFACES}var t: UInt64 := Time();{$ENDIF}
+{$IFDEF WL_DEBUG_INTERFACES}
+var
+  t: UInt64;
+{$ENDIF}
 begin
   if RSClient.Client = ERSClient.UNKNOWN then
     Exit;
+
+  {$IFDEF WL_DEBUG_INTERFACES}
+  t := Time();
+  {$ENDIF}
 
   //interfaces that depend on other's bounds need to be in the right order
   //e.g., gametabs need to go after GameTab and GameTab after GameTabs.
@@ -60,7 +67,7 @@ begin
   CargoHold.SetupInterface();
 
   {$IFDEF WL_DEBUG_INTERFACES}
-  WriteLn GetDebugLn('RSClient', 'Interface setup took ' + ToStr(Time()-t) + ' ms to calculate.');
+  WriteLn GetDebugLn('RSClient', 'Interface setup took ' + ToStr(Time()-t) + 'ms to calculate.');
   {$ENDIF}
 end;
 

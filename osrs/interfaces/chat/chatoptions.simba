@@ -400,7 +400,7 @@ if Chat.LeveledUp() then
 *)
 function TRSChat.LeveledUp(): Boolean;
 begin
-  Result := False;
+  Result := Self.HasOption('Congratulations', True, [RSFonts.DARK_BLUE]);
 end;
 
 

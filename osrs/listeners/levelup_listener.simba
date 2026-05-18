@@ -11,29 +11,54 @@ before you include WaspLib:
 
 For more information on listeners and how to run them check {ref}`Listeners`.
 *)
-{$DEFINE WL_LEVEL_UP_LISTENER_INCLUDED}
+{$DEFINE WL_LEVELUP_LISTENER_INCLUDED}
 {$INCLUDE_ONCE WaspLib/osrs.simba}
 
-{%anchor WL_DEBUG_LEVEL_UP_LISTENER}
-{.$DEFINE WL_DEBUG_LEVEL_UP_LISTENER}
+{%anchor WL_DEBUG_LEVELUP_LISTENER}
+{.$DEFINE WL_DEBUG_LEVELUP_LISTENER}
 
 type
-  TOnLevelUp = procedure (const msg: String) of object;
-
   TLevelUpListener = record
     Engine: TPixelOCR;
     MessageLines: TBoxArray;
     LastMessage: String;
-    Bounds, NameBox: TBox;
-    OnMessage: array of TOnLevelUp;
+    Bounds, MessageBox, LevelBox: TBox;
+    SkillMap: TStringMap<ERSSkill>;
+    OnLevelUp: array of procedure (img: TImage; level: Integer; skill: ERSSkill) of object;
   end;
+
+{$H-}
+procedure TLevelUpListener.SaveScreenshot(img: TImage; level: Integer; skill: ERSSkill);
+var
+  path: String;
+begin
+  path := SimbaEnv.ScreenshotsPath + 'levelups' + PATH_SEP;
+  if not DirCreate(path) then
+    Exit;
+  path += TDateTime.CreateFromSystem().ToString(FILE_TIME_FORMAT);
+  img.Save(path + '.png', True);
+end;
+
+procedure TLevelUpListener.UpdateStats(img: TImage; level: Integer; skill: ERSSkill);
+begin
+  Stats.Levels[skill] := level;
+end;
+{$H+}
 
 procedure TLevelUpListener.Setup();
 var
   i: Integer;
-  pt: TPoint;
+  key: String;
 begin
   Self.Bounds := Chat.Bounds;
+  Self.MessageBox := Box(0, 0, Self.Bounds.Width-1, 59);
+  Self.LevelBox := Box(0, 60, Self.Bounds.Width-1, Self.Bounds.Height-76);
+
+  for i := 0 to Ord(High(ERSSkill)) do
+  begin
+    key := ToStr(ERSSkill(i)).After('ERSSkill.').ToLower();
+    Self.SkillMap.Value[key] := ERSSkill(i);
+  end;
 
   WriteLn(
     GetTimeStamp(),
@@ -42,27 +67,37 @@ begin
 end;
 
 (*
-## ChatListener.GetMessage
+## LevelUpListener.LeveledUp
 ```pascal
-function TLevelUpListener.GetMessage(trgt: TTarget; line: Integer): TChatMessage;
+function TLevelUpListener.LeveledUp(img: TImage): Boolean;
 ```
-Very similar to `Chat.GetMessage` when the chat is not transparent in how it
-works.
+Very similar to the start of `Chat.LeveledUp`.
 
-Gets the message on the last `Chat` `line`.
+Basically looks for a message containing "Congratulations" at the start and
+returns true if it's found.
 
 Example:
 ```pascal
-WriteLn ChatListener.GetMessage(Target, 5);
+WriteLn LevelUpListener.LeveledUp(Target.GetImage());
 ```
 *)
-function TLevelUpListener.GetOptions(trgt: TTarget): Boolean;
+function TLevelUpListener.LeveledUp(img: TImage): Boolean;
+var
+  i: Integer;
 begin
+  img.Crop(Self.MessageBox);
+  img.ReplaceColorBinary(False, [RSFonts.DARK_BLUE], 0);
+  Self.Engine.RecognizeLines(img, RSFonts.QUILL_8);
+  if Self.Engine.Matches = [] then
+    Exit;
 
+  for i := 0 to High(Self.Engine.Matches) do
+    if Self.Engine.Matches[i].Text.StartsWith('Congratulations') then
+      Exit(True);
 end;
 
 (*
-## ChatListener.Check
+## LevelUpListener.Check
 ```pascal
 function TLevelUpListener.Check(): Boolean;
 ```
@@ -70,26 +105,45 @@ Returns true if there's been new messages.
 
 Example:
 ```pascal
-ChatListener.Check();
+WriteLn LevelUpListener.Check();
 ```
 *)
 function TLevelUpListener.Check(): Boolean;
 var
-  img: TImage;
-  trgt: TTarget;
+  img, tmp: TImage;
+  i, level: Integer;
+  str, key: String;
+  skill: ERSSkill;
 begin
   img := Target.GetImage(Self.Bounds);
+  if not Self.LeveledUp(img.Copy()) then
+    Exit;
 
-  trgt := new TTarget();
-  trgt.SetImage(img);
+  tmp := img.Copy();
+  tmp.Crop(Self.LevelBox);
+  tmp.ReplaceColorBinary(False, [RSFonts.BLACK], 0);
+  str := Self.Engine.Recognize(tmp, RSFonts.QUILL_8);
 
+  key := Trim(str.Between('Your ', ' level').ToLower());
+  skill := Self.SkillMap.Value[key];
+  level := StrToInt(str.Between('now ', '.'), 0);
+
+  if Stats.Levels[skill] >= level then
+    Exit;
+
+  Result := True;
+
+  {$IFDEF WL_DEBUG_LEVELUP_LISTENER}
+  WriteLn GetTimeStamp() + ':[LevelUpListener]: Leveled up ' + ToStr(skill) + ' to ' + ToStr(level) + '.';
+  {$ENDIF}
+
+  for i := 0 to High(Self.OnLevelUp) do
+    Self.OnLevelUp[i](img, level, skill);
 end;
 
 var
 (*
-## ChatListener variable
+## LevelUpListener variable
 Global {ref}`TLevelUpListener` variable.
 *)
-{$H-}
   LevelUpListener: TLevelUpListener;
-{$H+}

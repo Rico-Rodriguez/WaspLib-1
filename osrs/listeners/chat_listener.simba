@@ -258,7 +258,7 @@ Returns true if there's been new messages.
 
 Example:
 ```pascal
-ChatListener.Check();
+WriteLn ChatListener.Check();
 ```
 *)
 function TChatListener.Check(): Boolean;
@@ -286,17 +286,17 @@ begin
       msgs[i] := Self.GetMessage(trgt, i);
   end;
 
-  Result := not msgs.Equals(Self.LastMessages, 0.85);
+  if msgs.Equals(Self.LastMessages, 0.85) then
+    Exit;
 
-  if Result then
-  begin
-    {$IFDEF WL_DEBUG_CHAT_LISTENER}
-    WriteLn GetTimeStamp() + ':[ChatListener]: Got new messages.';
-    {$ENDIF}
-    Self.LastMessages := msgs;
-    for i := 0 to High(Self.OnMessage) do
-      Self.OnMessage[i](msgs);
-  end;
+  Result := True;
+
+  {$IFDEF WL_DEBUG_CHAT_LISTENER}
+  WriteLn GetTimeStamp() + ':[ChatListener]: Got new messages.';
+  {$ENDIF}
+  Self.LastMessages := msgs;
+  for i := 0 to High(Self.OnMessage) do
+    Self.OnMessage[i](msgs);
 end;
 
 var

@@ -3,20 +3,21 @@
 This page is about {ref}`Misc` dedicated `TLazForm` utilities.
 
 This is meant to be used with {ref}`TScriptForm` with
-{ref}`TScriptForm.CreateMiscTab` and will setup a a `TLazTabSheet` on it
+{ref}`TScriptForm.CreateMiscTab` and will setup a `TLazTabSheet` on it
 with several controls to configure {ref}`Misc`:
-```{figure} ../../images/waspclientform.png
+```{figure} ../../images/miscform.png
 ```
 *)
 {$DEFINE WL_MISC_FORM_INCLUDED}
 {$INCLUDE_ONCE WaspLib/osrs.simba}
 
 (*
-## ScriptForm CreateInventoryTab
+## ScriptForm CreateMiscTab
 ```pascal
-function TScriptForm.CreateInventoryTab(): TLazTabSheet;
+function TScriptForm.CreateMiscTab(): TLazTabSheet;
 ```
-Sets up a `TLazTabSheet` on your `TScriptForm` to configure your `Inventory Layouts`.
+Sets up a `TLazTabSheet` on your `TScriptForm` to configure your
+`misc` settings.
 
 Example:
 ```pascal
@@ -25,13 +26,14 @@ var
   form: TScriptForm;
 begin
   form.Setup();
-  form.CreateInventoryTab();
+  form.CreateMiscTab();
   form.Run();
 end.
 ```
-```{figure} ../../images/inventoryform.gif
+```{figure} ../../images/miscform.gif
 ```
-For a more complete example check out the file `Simba/Includes/WaspLib/examples/inventory_form.simba`.
+For a more complete example check out the file
+`Simba/Includes/WaspLib/examples/misc_form.simba`.
 *)
 function TScriptForm.CreateMiscTab(): TLazTabSheet;
 var

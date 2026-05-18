@@ -6,6 +6,15 @@ library configurations in either JSON or INI formats.
 {$DEFINE WL_CONFIG_INCLUDED}
 {$INCLUDE_ONCE WaspLib/utils.simba}
 
+function TJSONItem.Assert(key: String; typ: EJSONType): Boolean;
+begin
+  if not Self.Has(key) then
+    Exit;
+  if Self.Item[key].Typ = typ then
+    Exit(True);
+  Self.Delete(Self.Item[key]);
+end;
+
 type
 (*
 ## TConfigJSON

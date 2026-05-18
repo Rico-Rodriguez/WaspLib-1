@@ -252,7 +252,7 @@ begin
   checkbox.OnChange := @Self.NormalizeCoordinatesOnChange;
   checkbox.SetChecked(True);
   lbl.AnchorSideTop.Control := checkbox;
-  lbl.OnClick := @FormUtils.OnCheckboxCaptionClick;
+  lbl.OnClick := @FormUtils.OnCheckboxAnchorClick;
 
   lbl := TLazLabel.CreateEx(panel, 'Show ObjectClusters');
   lbl.Font.Color := $FFFFFF;
@@ -265,7 +265,7 @@ begin
   checkbox.BorderSpacing.Right := 4;
   checkbox.OnChange := @Self.ObjectClustersOnChange;
   lbl.AnchorSideTop.Control := checkbox;
-  lbl.OnClick := @FormUtils.OnCheckboxCaptionClick;
+  lbl.OnClick := @FormUtils.OnCheckboxAnchorClick;
 
   lbl := TLazLabel.CreateEx(panel, 'Show WalkableClusters');
   lbl.Font.Color := $FFFFFF;
@@ -278,7 +278,7 @@ begin
   checkbox.BorderSpacing.Right := 4;
   checkbox.OnChange := @Self.WalkableClustersOnChange;
   lbl.AnchorSideTop.Control := checkbox;
-  lbl.OnClick := @FormUtils.OnCheckboxCaptionClick;
+  lbl.OnClick := @FormUtils.OnCheckboxAnchorClick;
 
 
   lbl := TLazLabel.CreateEx(panel, 'Show WalkableSpace');
@@ -292,7 +292,7 @@ begin
   checkbox.BorderSpacing.Right := 4;
   checkbox.OnChange := @Self.WalkableSpaceOnChange;
   lbl.AnchorSideTop.Control := checkbox;
-  lbl.OnClick := @FormUtils.OnCheckboxCaptionClick;
+  lbl.OnClick := @FormUtils.OnCheckboxAnchorClick;
 
   lbl := TLazLabel.CreateEx(panel, 'Show webgraph');
   lbl.Font.Color := $FFFFFF;
@@ -306,7 +306,7 @@ begin
   checkbox.BorderSpacing.Right := 4;
   checkbox.OnChange := @Self.GraphOnChange;
   lbl.AnchorSideTop.Control := checkbox;
-  lbl.OnClick := @FormUtils.OnCheckboxCaptionClick;
+  lbl.OnClick := @FormUtils.OnCheckboxAnchorClick;
 
 
   combobox := TLazComboBox.CreateEx(panel);

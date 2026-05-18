@@ -280,8 +280,10 @@ begin
 end.
 ```
 *)
-procedure TListeners.StartInThread(interval: Integer = 300);
+procedure TListeners.StartInThread(interval: Integer = 200);
 begin
+  if Self.Running then
+    raise GetDebugLn('Listeners', 'Already running.');
   Self.Interval := interval;
   Self.Thread := TThread.Create(@Self.Start);
   AddOnTerminate(Self.Free);
@@ -294,3 +296,38 @@ Global {ref}`TListeners` variable.
 *)
   Listeners: TListeners;
 
+{%anchor WL_SYNC_LISTENERS}
+{.$DEFINE WL_SYNC_LISTENERS}
+(*
+## StartListeners
+```pascal
+procedure StartListeners(interval: Integer = 200);
+```
+Starts {ref}`Listeners` with some of the built-in listeners:
+- {ref}`LevelUpListener`
+
+Example:
+```pascal
+{$I WaspLib/osrs.simba}
+
+begin
+  StartListeners(200);
+
+  while True do
+    Sleep(4000);
+end.
+```
+*)
+procedure StartListeners(interval: Integer = 200);
+begin
+  LevelUpListener.OnLevelUp += @LevelUpListener.SaveScreenshot;
+  LevelUpListener.OnLevelUp += @LevelUpListener.UpdateStats;
+  Listeners.Add('LevelUpListener', @LevelUpListener.Setup, @LevelUpListener.Check);
+
+  {$IFDEF WL_SYNC_LISTENERS}
+  Listeners.Interval := interval;
+  Listeners.Start();
+  {$ELSE}
+  Listeners.StartInThread(interval);
+  {$ENDIF}
+end;

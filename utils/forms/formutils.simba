@@ -154,7 +154,15 @@ begin
   TLazControl(sender).Font.Color := $20000000;
 end;
 
-procedure TFormUtils.OnCheckboxCaptionClick(sender: TLazObject);
+(*
+## FormUtils.OnCheckboxAnchorClick
+```pascal
+procedure TFormUtils.OnCheckboxAnchorClick(sender: TLazObject);
+```
+Made for components that are anchored to a `TLazCheckbox`,
+this makes it so clicking them toggles the checkbox.
+*)
+procedure TFormUtils.OnCheckboxAnchorClick(sender: TLazObject);
 var
   caption: TLazLabel;
   checkbox: TLazCheckBox;
@@ -175,6 +183,34 @@ begin
   checkbox.Toggle();
   if checkbox.OnChange <> nil then
     Lapify(checkbox.OnChange)(checkbox);
+end;
+
+(*
+## FormUtils.OnCheckboxToggleParent
+```pascal
+procedure TFormUtils.OnCheckboxToggleParent(sender: TLazObject);
+```
+Made for `TLazCheckbox` so they can enable/disable all of their sibling
+components.
+*)
+procedure TFormUtils.OnCheckboxToggleParent(sender: TLazObject);
+var
+  checkbox: TLazCheckBox;
+  checked: Boolean;
+  parent: TLazWinControl;
+  i: Integer;
+  control: TLazComponent;
+begin
+  checkbox := TLazCheckBox(sender);
+  checked := checkbox.IsChecked();
+  parent := checkbox.Parent;
+
+  for i := 0 to parent.ComponentCount-1 do
+  begin
+    control := parent.GetComponent(i);
+    if checkbox <> control then
+      TLazControl(control).Enabled := checked;
+  end;
 end;
 
 var
@@ -222,7 +258,6 @@ begin
   Result := Round(inherited() / FormUtils.Scale);
 end;
 
-
 property TLazControl.Right: Integer;
 begin
   Result := Self.Left+Self.Width;
@@ -233,6 +268,14 @@ begin
   Result := Self.Top+Self.Height;
 end;
 
+
+procedure TLazControl.SetBounds(aLeft, aTop, aWidth, aHeight: Integer); override;
+begin
+  inherited(
+    Round(aLeft * FormUtils.Scale), Round(aTop * FormUtils.Scale),
+    Round(aWidth * FormUtils.Scale), Round(aHeight * FormUtils.Scale)
+  );
+end;
 
 
 property TLazSizeConstraints.MinWidth(value: Integer); override;
@@ -275,7 +318,6 @@ property TLazSizeConstraints.MaxHeight: Integer; override;
 begin
   Result := Round(inherited() / FormUtils.Scale);
 end;
-
 
 
 property TLazControlBorderSpacing.Left(value: Integer); override;
@@ -1125,8 +1167,7 @@ procedure TLazControl.LoadImage(path: String);
 var
   img: TLazImage;
 begin
-  img := TLazImage.Create(Self);
-  img.Parent := Self;
+  img := TLazImage.CreateEx(Self);
   img.Picture.LoadFromFile(path);
   img.SetBounds(0, 0, Self.Width, Self.Height);
   img.Stretch := True;
@@ -1138,8 +1179,7 @@ procedure TLazControl.LoadImage(img: TImage); overload;
 var
   limg: TLazImage;
 begin
-  limg := TLazImage.Create(Self);
-  limg.Parent := Self;
+  limg := TLazImage.CreateEx(Self);
   limg.Picture.Bitmap := img.ToLazBitmap();
   limg.SetBounds(0, 0, Self.Width, Self.Height);
   limg.Stretch := True;

@@ -82,12 +82,16 @@ begin
   Self.LoginPanel.BevelWidth := 0;
 
   info := TLazLabel.CreateEx(
-    Self.LoginPanel, '', '',
-    Round(parent.Width * 0.2), 80, Round(parent.Width * 0.6), 90
+    Self.LoginPanel,
+    'You are currently not logged into WaspScripts.' + LINE_SEP +
+    LINE_SEP + 'To submit stats you can either login below' +
+    LINE_SEP + 'or relaunch the script from wasp-launcher.',
+    '',
+    Round(parent.Width * 0.2),
+    80,
+    Round(parent.Width * 0.6),
+    90
   );
-  info.Caption := 'You are currently not logged into WaspScripts.' + LINE_SEP +
-                  LINE_SEP + 'To submit stats you can either login below' +
-                  LINE_SEP + 'or relaunch the script from wasp-launcher.';
   info.Alignment := ELazAlignment.Center;
   info.Font.Name := 'Courier New';
   info.OptimalFill := True;

@@ -43,7 +43,7 @@ Helper record to read skill information when you hover them in the {ref}`Stats` 
 Main record used to interact with the {ref}`Stats` gametab.
 *)
   TRSStats = record
-    Levels: array [ERSSkill] of Integer;
+    Levels, Goals: array [ERSSkill] of Integer;
     Skills: TBoxArray;
   end;
 
@@ -206,8 +206,11 @@ end;
 ```pascal
 function TRSStats.GetLevel(skill: ERSSkill; useCache: Boolean = True): Integer;
 ```
-Get the level of the specified **skill**. By default uses the levels cached in the Stats.Levels array.
-When using the cached methods, it can be used to retrieve the level of a skill while the gametab is open assuming the level is already cached.
+Get the level of the specified **skill**.
+By default uses the levels cached in the Stats.Levels array.
+
+When using the cached methods, it can be used to retrieve the level of a skill
+while the gametab is open assuming the level is already cached.
 
 Example:
 ```pascal
@@ -216,22 +219,27 @@ WriteLn Stats.GetLevel(ERSSkill.HITPOINTS);
 *)
 function TRSStats.GetLevel(skill: ERSSkill; useCache: Boolean = True): Integer;
 var
-  b: TBox;
+  bounds: TBox;
 begin
   if useCache then
   begin
     Result := Self.Levels[skill];
-    if Result > 0 then Exit;
+    if Result > 0 then
+      Exit;
   end;
 
-  if not Self.Open() then Exit(-1);
+  if not Self.Open() then
+    Exit;
 
   if skill = ERSSkill.TOTAL then
-    b := Self.Skills[skill]
+    bounds := Self.Skills[skill]
   else
-    with Self.Skills[skill] do b := [X1, Y2 - (Height div 2), X2, Y2];
+    bounds := [
+      Self.Skills[skill].X1, Self.Skills[skill].Y2 - (Self.Skills[skill].Height div 2),
+      Self.Skills[skill].X2, Self.Skills[skill].Y2
+    ];
 
-  Result := OCR.RecognizeNumber(b, RSFonts.PLAIN_11, [ERSStack.YELLOW.Color], 0);
+  Result := OCR.RecognizeNumber(bounds, RSFonts.PLAIN_11, [RSFonts.YELLOW], 0);
 
   if Result > 0 then
     Self.Levels[skill] := Result;
@@ -249,7 +257,11 @@ var
   i: Integer;
 begin
   for i := 0 to Ord(High(ERSSkill)) do
+  begin
     Self.GetLevel(ERSSkill(i), False);
+    if Self.Goals[ERSSkill(i)] = 0 then
+      Self.Goals[ERSSkill(i)] := $FF;
+  end;
 end;
 
 (*
@@ -268,7 +280,94 @@ WriteLn Stats.GetCurrentLevel(ERSSkill.PRAYER);
 *)
 procedure TRSStats.IncrementCachedLevel(skill: ERSSkill);
 begin
-  if Self.Levels[skill] > 0 then Self.Levels[skill] += 1;
+  if Self.Levels[skill] > 0 then
+    Self.Levels[skill] += 1;
+end;
+
+(*
+## Stats.Goals
+{ref}`Stats` has a `Goals` variable where you can configure goal levels for the
+running script.
+
+You can configure a goal level like this:
+```pascal
+{$I WaspLib/osrs.simba}
+begin
+  Stats.Goals[ERSSkill.FIREMAKING] := 50;
+end.
+```
+
+By itself, WaspLib doesn't do anything with this, but you can use the next
+functions as you please to do an action when `any` or `all` goals have been
+reached, their documentation have examples on how you could terminate the script
+when a goal has been reached.
+*)
+
+(*
+### Stats.AnyGoalsCompleted
+```pascal
+function TRSStats.AnyGoalsCompleted(): Boolean;
+```
+Returns true when any skill has reached it's goal level.
+
+Example:
+```pascal
+{$I WaspLib/osrs.simba}
+begin
+  Stats.Goals[ERSSkill.FIREMAKING] := 50;
+  Stats.Goals[ERSSkill.FLETCHING] := 30;
+  Stats.Goals[ERSSkill.CONSTRUCTION] := 20;
+  Stats.Goals[ERSSkill.WOODCUTTING] := 35;
+  repeat
+    Sleep(5*TICK);
+  until Stats.AnyGoalsCompleted();
+
+  WriteLn 'A skill goal has been reached!';
+end.
+```
+*)
+function TRSStats.AnyGoalsCompleted(): Boolean;
+var
+  skill: ERSSkill;
+begin
+  for skill := Low(ERSSkill) to High(ERSSkill) do
+    if (Self.Goals[skill] > 0) and (Self.GetLevel(skill) >= Self.Goals[skill]) then
+      Exit(True);
+end;
+
+(*
+### Stats.AllGoalsCompleted
+```pascal
+function TRSStats.AllGoalsCompleted(): Boolean;
+```
+Returns true when all skills have reached their goal levels.
+
+Example:
+```pascal
+{$I WaspLib/osrs.simba}
+begin
+  Stats.Goals[ERSSkill.FIREMAKING] := 50;
+  Stats.Goals[ERSSkill.FLETCHING] := 30;
+  Stats.Goals[ERSSkill.CONSTRUCTION] := 20;
+  Stats.Goals[ERSSkill.WOODCUTTING] := 35;
+  while True do
+  begin
+    Sleep(5*TICK);
+    if Stats.AllGoalsCompleted() then
+      TerminateScript('A skill goal has been reached!');
+  end;
+end.
+```
+*)
+function TRSStats.AllGoalsCompleted(): Boolean;
+var
+  skill: ERSSkill;
+begin
+  for skill := Low(ERSSkill) to High(ERSSkill) do
+    if (Self.Goals[skill] > 0) and (Self.GetLevel(skill) < Self.Goals[skill]) then
+      Exit;
+
+  Result := True;
 end;
 
 var

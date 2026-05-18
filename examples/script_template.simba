@@ -10,8 +10,8 @@ type
   );
 
   TTemplate = record
-    Actions, MaxTime, MaxActions, MaxLevel: UInt64;
-    FormSetting: Boolean;
+    Actions, MaxTime, MaxActions: UInt64;
+    LevelGoals, FormSetting: Boolean;
   end;
 
 function TTemplate.GetReportValues(): TStringArray;
@@ -54,6 +54,11 @@ begin
     @Self.GetReportValues
   );
 
+  if not RSClient.IsLoggedIn() then
+    Login.DoLogin();
+
+  StartListeners(300);
+
   Map.Setup([ERSChunk.VARROCK]);
 
   Antiban.Zoom.Min := 0;
@@ -74,7 +79,7 @@ begin
   if (Self.MaxTime > 0) and (Logger.TimeRunning.Elapsed >= Self.MaxTime) then
     Exit(ETemplateState.MAX_TIME);
 
-  if (Self.MaxLevel > 0) and (Stats.GetLevel(ERSSkill.TOTAL) >= Self.MaxLevel) then
+  if Stats.AnyGoalsCompleted() then
     Exit(ETemplateState.MAX_LEVEL);
 
   if not RSClient.IsLoggedIn() then
@@ -130,10 +135,6 @@ begin
   else
     TemplateConfig.Data.AddBool('form_setting', Template.FormSetting);
 
-  Template.MaxActions := Self.Goals.Actions.Value;
-  Template.MaxTime    := Self.Goals.Time.Value * ONE_MINUTE;
-  Template.MaxLevel   := Self.Goals.Level.Value;
-
   TemplateConfig.Save();
 end;
 
@@ -147,7 +148,10 @@ begin
   Self.Setup('My Script Name', TemplateConfig.Data);
 
   tab := Self.CreateTab('My Script Name');
-  panel := Self.CreateGoals(tab, True, True, True, EOrientation.HORIZONTAL);
+  GoalsForm.Actions := @Template.MaxActions;
+  GoalsForm.Time := @Template.MaxTime;
+  GoalsForm.Stats := @Template.LevelGoals;
+  panel := GoalsForm.Create(tab, True, True, True, EOrientation.HORIZONTAL);
   panel.Align := ELazAlign.Bottom;
 
   FormCheckbox := TLazCheckBox.CreateEx(tab, 'My Setting', 'My setting does cool stuff', 20, 220);
