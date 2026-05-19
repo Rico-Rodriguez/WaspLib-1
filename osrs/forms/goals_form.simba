@@ -214,7 +214,11 @@ begin
   if not checkbox.IsChecked() then
     Self.OnStatsToggle(checkbox)
   else
+  begin
+    Self.Stats^ := True;
     checkbox.Caption := 'Disable';
+  end;
+
   checkbox.OnChange := @Self.OnStatsToggle;
 end;
 
