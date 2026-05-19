@@ -75,6 +75,7 @@ type
   TOnChatMessage = procedure (const msgs: TChatMessageArray) of object;
 
   TChatListener = record
+    Target: TTarget;
     Engine: TPixelOCR;
     MessageLines: TBoxArray;
     LastMessages: TChatMessageArray;
@@ -83,11 +84,12 @@ type
     const STATIC_OFFSET: Integer = 2;
   end;
 
-procedure TChatListener.Setup();
+procedure TChatListener.Setup(trgt: TTarget);
 var
   i: Integer;
   pt: TPoint;
 begin
+  Self.Target := trgt;
   Self.Bounds := Chat.Bounds;
 
   pt := [-Self.Bounds.X1, -Self.Bounds.Y1 - Self.STATIC_OFFSET];
@@ -268,7 +270,7 @@ var
   i: Integer;
   msgs: TChatMessageArray;
 begin
-  img := Target.GetImage(Self.Bounds);
+  img := Self.Target.GetImage(Self.Bounds);
 
   trgt := new TTarget();
   trgt.SetImage(img);

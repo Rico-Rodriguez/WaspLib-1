@@ -25,6 +25,7 @@ type
     Bounds, MessageBox, LevelBox: TBox;
     SkillMap: TStringMap<ERSSkill>;
     OnLevelUp: array of procedure (img: TImage; level: Integer; skill: ERSSkill) of object;
+    Target: TTarget;
   end;
 
 {$H-}
@@ -45,11 +46,12 @@ begin
 end;
 {$H+}
 
-procedure TLevelUpListener.Setup();
+procedure TLevelUpListener.Setup(trgt: TTarget);
 var
   i: Integer;
   key: String;
 begin
+  Self.Target := trgt;
   Self.Bounds := Chat.Bounds;
   Self.MessageBox := Box(0, 0, Self.Bounds.Width-1, 59);
   Self.LevelBox := Box(0, 60, Self.Bounds.Width-1, Self.Bounds.Height-76);
@@ -84,8 +86,15 @@ WriteLn LevelUpListener.LeveledUp(Target.GetImage());
 function TLevelUpListener.LeveledUp(img: TImage): Boolean;
 var
   i: Integer;
+  trgt: TTarget;
 begin
   img.Crop(Self.MessageBox);
+
+  trgt := new TTarget();
+  trgt.SetImage(img);
+  if not trgt.HasColor(RSFonts.DARK_BLUE, 0, 1) then
+    Exit;
+
   img.ReplaceColorBinary(False, [RSFonts.DARK_BLUE], 0);
   Self.Engine.RecognizeLines(img, RSFonts.QUILL_8);
   if Self.Engine.Matches = [] then
@@ -115,7 +124,7 @@ var
   str, key: String;
   skill: ERSSkill;
 begin
-  img := Target.GetImage(Self.Bounds);
+  img := Self.Target.GetImage(Self.Bounds);
   if not Self.LeveledUp(img.Copy()) then
     Exit;
 
