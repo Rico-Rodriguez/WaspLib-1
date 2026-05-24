@@ -140,9 +140,11 @@ var
   item: TImage;
   pt: TPoint;
 begin
-  if (itemName = '') or (itemName = 'Nothing') then Exit;
+  if (itemName = '') or (itemName = 'Nothing') then
+    Exit;
   id := ItemFinder.Database.Get(itemName.ToLower(), 'item', 'id');
   item := ItemFinder.GetImage(id).Copy();
+
   if amount > 1 then
   begin
     if amount < 99999 then
@@ -163,6 +165,7 @@ begin
 
     item.DrawTPA(OCR.Engine.TextToTPA(RSFonts.PLAIN_11, txt));
   end;
+
   pt := [x - (item.Width div 2), y - (item.Height div 2)];
   background.DrawAlpha := $9D;
   background.DrawImage(item, pt);
@@ -309,82 +312,77 @@ end;
 procedure TInventoryFormHelper.OnKeyPress(sender: TLazObject; var key: Int16; shift: ELazShiftStates);
 var
   str: String;
-  tmp: Int16;
+  code: EKeyCode;
 begin
-  tmp := key;
+  code := EKeyCode(key);
   key := 0;
 
-  str := Self.Search.Text;
-  if Self.Dragging then
-  begin
-    Self.Dragging := False;
-    Self.UpdateBackground();
-    if tmp = 27 then Exit;
+  case code of
+    EKeyCode.ESCAPE:
+      begin
+        if Self.Dragging then
+        begin
+          Self.Dragging := False;
+          Self.UpdateBackground();
+        end;
+      end;
+    EKeyCode.BACK:
+      begin
+        str := Self.Search.Text;
+        str.Pop;
+        Self.Search.Text := str;
+      end;
+    EKeyCode.RETURN:
+      begin
+        if Self.UnfilterButton.Enabled then
+          Self.OnSelectionChange(Self.FilteredList)
+        else
+          Self.OnSelectionChange(Self.ItemList);
+        Self.OnSearchChange(Self.Search);
+      end;
+    EKeyCode.SHIFT, EKeyCode.CONTROL: ;
+    EKeyCode.LEFT:
+      begin
+        Self.Selected := ((Self.Selected - 1) mod 28 + 28) mod 28;
+        Self.ListLabel.Caption := 'Selected slot: ' + ToStr(Self.Selected);
+        Self.UpdateListBox();
+        Self.SyncSelectionVisuals();
+        Self.UpdateBackground();
+      end;
+    EKeyCode.UP:
+      begin
+        Self.Selected := ((Self.Selected - 4) mod 28 + 28) mod 28;
+        Self.ListLabel.Caption := 'Selected slot: ' + ToStr(Self.Selected);
+        Self.UpdateListBox();
+        Self.SyncSelectionVisuals();
+        Self.UpdateBackground();
+      end;
+    EKeyCode.RIGHT:
+      begin
+        Self.Selected := ((Self.Selected + 1) mod 28 + 28) mod 28;
+        Self.ListLabel.Caption := 'Selected slot: ' + ToStr(Self.Selected);
+        Self.UpdateListBox();
+        Self.SyncSelectionVisuals();
+        Self.UpdateBackground();
+      end;
+    EKeyCode.DOWN:
+      begin
+        Self.Selected := ((Self.Selected + 4) mod 28 + 28) mod 28;
+        Self.ListLabel.Caption := 'Selected slot: ' + ToStr(Self.Selected);
+        Self.UpdateListBox();
+        Self.SyncSelectionVisuals();
+        Self.UpdateBackground();
+      end;
+    EKeyCode.DELETE:
+      begin
+        Self.Layout.Items[Self.Selected].Item := 'Nothing';
+        Self.UpdateListBox();
+        Self.SyncSelectionVisuals();
+        Self.UpdateBackground();
+      end;
+    else
+      Self.Search.Text := Self.Search.Text + Char(Ord(code));
   end;
-
-  case tmp of
-    8:
-    begin
-      SetLength(str, Length(str)-1);
-      Self.Search.Text := str;
-      Exit;
-    end;
-    13:
-    begin
-      if Self.UnfilterButton.Enabled then
-        Self.OnSelectionChange(Self.FilteredList)
-      else
-        Self.OnSelectionChange(Self.ItemList);
-      Self.OnSearchChange(Self.Search);
-      Exit;
-    end;
-    16, 17: Exit;
-    37:
-    begin
-      Self.Selected := ((Self.Selected - 1) mod 28 + 28) mod 28;
-      Self.ListLabel.Caption := 'Selected slot: ' + ToStr(Self.Selected);
-      Self.UpdateListBox();
-      Self.SyncSelectionVisuals();
-      Self.UpdateBackground();
-      Exit;
-    end;
-    38:
-    begin
-      Self.Selected := ((Self.Selected - 4) mod 28 + 28) mod 28;
-      Self.ListLabel.Caption := 'Selected slot: ' + ToStr(Self.Selected);
-      Self.UpdateListBox();
-      Self.SyncSelectionVisuals();
-      Self.UpdateBackground();
-      Exit;
-    end;
-    39:
-    begin
-      Self.Selected := ((Self.Selected + 1) mod 28 + 28) mod 28;
-      Self.ListLabel.Caption := 'Selected slot: ' + ToStr(Self.Selected);
-      Self.UpdateListBox();
-      Self.SyncSelectionVisuals();
-      Self.UpdateBackground();
-      Exit;
-    end;
-    40:
-    begin
-      Self.Selected := ((Self.Selected + 4) mod 28 + 28) mod 28;
-      Self.ListLabel.Caption := 'Selected slot: ' + ToStr(Self.Selected);
-      Self.UpdateListBox();
-      Self.SyncSelectionVisuals();
-      Self.UpdateBackground();
-      Exit;
-    end;
-    46:
-    begin
-      Self.Layout.Items[Self.Selected].Item := 'Nothing';
-      Self.UpdateListBox();
-      Self.SyncSelectionVisuals();
-      Self.UpdateBackground();
-      Exit;
-    end;
-  end;
-  Self.Search.Text := str + Char(tmp);
 end;
 
 procedure TInventoryFormHelper.OnImgKeyDown(sender: TImageBox; var key: UInt16; shift: ELazShiftStates);

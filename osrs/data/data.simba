@@ -124,7 +124,8 @@ function TItemData.GetDefinition(itemID: String): TJSONItem;
 var
   path, filename: String;
 begin
-  if Self.DefinitionsJSON.GetObject(itemID, Result) then Exit;
+  if Self.DefinitionsJSON.GetObject(itemID, Result) then
+    Exit;
 
   path := Self.CacheDir  + 'items' + PATH_SEP;
   filename := path + itemID + '.json';
@@ -164,6 +165,7 @@ var
   ids: TStringArray;
   id: String;
   json: TJSONItem;
+  tradeable: Boolean;
 begin
   if item.IsNumeric then ids := [item]
   else ids := ItemFinder.Database.GetAll(item.ToLower(), 'item', 'id');
@@ -171,9 +173,7 @@ begin
   for id in ids do
   begin
     json := Self.GetDefinition(id);
-    if not json.Has('tradeable', EJSONType.BOOL) then
-      Continue;
-    if json.Item['tradeable'].AsBool then
+    if json.GetBool('tradeable', tradeable) and tradeable then
       Exit(id);
   end;
 end;
@@ -263,7 +263,7 @@ var
   ids: TStringArray;
   id: String;
   json: TJSONItem;
-  value: Integer;
+  value: Int64;
 begin
   if item.IsNumeric then ids := [item]
   else ids := ItemFinder.Database.GetAll(item.ToLower(), 'item', 'id');
@@ -271,11 +271,9 @@ begin
   for id in ids do
   begin
     json := Self.GetDefinition(id);
-    if not json.Has('cost', EJSONType.INT) then
-      Continue;
-    value := json.Item['cost'].AsInt;
-    if value > 0 then
-      Exit(Round(value * 0.4));
+    if json.GetInt('cost', value) then
+      if value > 0 then
+        Exit(Round(value * 0.4));
   end;
 end;
 
@@ -296,7 +294,7 @@ var
   ids: TStringArray;
   id: String;
   json: TJSONItem;
-  value: Integer;
+  value: Int64;
 begin
   if item.IsNumeric then ids := [item]
   else ids := ItemFinder.Database.GetAll(item.ToLower(), 'item', 'id');
@@ -304,11 +302,9 @@ begin
   for id in ids do
   begin
     json := Self.GetDefinition(id);
-    if not json.Has('cost', EJSONType.INT) then
-      Continue;
-    value := json.Item['cost'].AsInt;
-    if value > 0 then
-      Exit(Round(value * 0.6));
+    if json.GetInt('cost', value) then
+      if value > 0 then
+        Exit(Round(value * 0.6));
   end;
 end;
 
